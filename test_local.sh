@@ -4,13 +4,13 @@ set -e
 
 IMAGE_NAME="mithrildb"
 CONTAINER_NAME="mithrildb-test"
-PORT=8080
+PORT=5126
 
 echo "🛠️  Build image..."
 docker build --progress=plain -t $IMAGE_NAME .
 
 echo "🚀 Executing Container..."
-docker run -d --rm --name $CONTAINER_NAME -p $PORT:8080 $IMAGE_NAME
+docker run -d --rm --name $CONTAINER_NAME -p $PORT:5126 $IMAGE_NAME
 
 echo "⏳ Waiting for server..."
 until curl -s "http://localhost:$PORT/metrics" >/dev/null; do

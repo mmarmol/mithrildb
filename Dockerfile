@@ -43,8 +43,11 @@ COPY --from=builder /app/mithril ./mithril
 COPY --from=builder /rocksdb/librocksdb.a ./librocksdb.a
 COPY --from=builder /rocksdb/include ./include
 
+# Copy resources folder
+COPY resources/ ./resources/
+
 # Create data folder
 RUN mkdir -p /data/db
 
-EXPOSE 8080
+EXPOSE 5126
 CMD ["./mithril"]

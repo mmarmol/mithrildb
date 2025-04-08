@@ -3,7 +3,7 @@ package rocks
 /*
 #cgo LDFLAGS: -L/rocksdb -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy -llz4 -lzstd
 #cgo CFLAGS: -I/rocksdb/include
-#include "rocks_wrapper.h"  // ✅ solo el header
+#include "rocks_wrapper.h"  // ✅ solo el header para los tipos de C
 */
 import "C"
 import (
@@ -15,23 +15,76 @@ type DB struct {
 	ptr *C.rocksdb_t
 }
 
-type RuntimeConfig struct{}
-type StaticConfig struct{}
-
 type Config struct {
-	RuntimeConfig RuntimeConfig
-	StaticConfig  StaticConfig
+	DBPath                         string
+	Port                           int
+	CreateIfMissing                bool
+	ErrorIfExists                  bool
+	ParanoidChecks                 bool
+	WriteBufferSize                int
+	MaxWriteBufferNumber           int
+	MinWriteBufferNumberToMerge    int
+	MaxBackgroundCompactions       int
+	MaxBackgroundFlushes           int
+	Compression                    string
+	CompactionStyle                string
+	Level0FileNumCompactionTrigger int
+	Level0SlowdownWritesTrigger    int
+	Level0StopWritesTrigger        int
+	MaxCompactionBytes             int
+	BlockSize                      int
+	BlockCacheSize                 int
+	BlockCacheCompressedSize       int
+	BloomFilterPolicy              bool
+	WriteSync                      bool
+	DisableAutoCompactions         bool
+	MaxOpenFiles                   int
+	MaxLogFileSize                 int
+	LogFileTimeToRoll              int
+	ReuseLogs                      bool
+	Statistics                     bool
+	DisableMemtableActivity        bool
+	MaxTotalWALSize                int
+	WalTTLSeconds                  int
+	WalSizeLimitMB                 int
+	ManifestPreallocationSize      int
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		RuntimeConfig: RuntimeConfig{},
-		StaticConfig:  StaticConfig{},
+		DBPath:                         "/data/db",
+		Port:                           5126,
+		CreateIfMissing:                true,
+		ErrorIfExists:                  false,
+		ParanoidChecks:                 false,
+		WriteBufferSize:                67108864,
+		MaxWriteBufferNumber:           3,
+		MinWriteBufferNumberToMerge:    1,
+		MaxBackgroundCompactions:       2,
+		MaxBackgroundFlushes:           1,
+		Compression:                    "snappy",
+		CompactionStyle:                "level",
+		Level0FileNumCompactionTrigger: 4,
+		Level0SlowdownWritesTrigger:    8,
+		Level0StopWritesTrigger:        12,
+		MaxCompactionBytes:             67108864,
+		BlockSize:                      16384,
+		BlockCacheSize:                 2147483648,
+		BlockCacheCompressedSize:       104857600,
+		BloomFilterPolicy:              true,
+		WriteSync:                      false,
+		DisableAutoCompactions:         false,
+		MaxOpenFiles:                   1000,
+		MaxLogFileSize:                 1073741824,
+		LogFileTimeToRoll:              3600000,
+		ReuseLogs:                      true,
+		Statistics:                     true,
+		DisableMemtableActivity:        false,
+		MaxTotalWALSize:                536870912,
+		WalTTLSeconds:                  86400,
+		WalSizeLimitMB:                 1024,
+		ManifestPreallocationSize:      4194304,
 	}
-}
-
-func (cfg *Config) ApplyRuntimeConfig(newCfg RuntimeConfig) {
-	cfg.RuntimeConfig = newCfg
 }
 
 func Open(path string, cfg *Config) (*DB, error) {
@@ -44,6 +97,13 @@ func Open(path string, cfg *Config) (*DB, error) {
 		return nil, parseErr(err)
 	}
 	return &DB{ptr: db}, nil
+}
+
+func (db *DB) ApplyConfig(cfg Config) error {
+	// Traduce y aplica la configuración usando funciones C y RocksDB.
+	// Ejemplo de cómo aplicar el `WriteBufferSize`:
+
+	return nil // Actualizar para reflejar el éxito o error de la operación
 }
 
 func (db *DB) Get(key string) (string, error) {
@@ -93,8 +153,6 @@ func (db *DB) Delete(key string) error {
 func (db *DB) Close() {
 	C.rocksdb_close(db.ptr)
 }
-
-func (db *DB) ApplyRuntimeConfig(cfg RuntimeConfig) {}
 
 func parseErr(cerr *C.char) error {
 	defer C.free(unsafe.Pointer(cerr))
