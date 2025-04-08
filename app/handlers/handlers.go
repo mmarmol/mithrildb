@@ -17,6 +17,11 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	if val == "" {
+		http.Error(w, "Key not found", http.StatusNotFound)
+		return
+	}
+
 	w.Write([]byte(val))
 }
 

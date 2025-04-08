@@ -8,6 +8,7 @@ package rocks
 import "C"
 import (
 	"fmt"
+	"log"
 	"unsafe"
 )
 
@@ -60,19 +61,30 @@ func (db *DB) Delete(key string) error {
 	ckey := C.CString(key)
 	defer C.free(unsafe.Pointer(ckey))
 
-	wo := C.rocksdb_writeoptions_create()
-	defer C.rocksdb_writeoptions_destroy(wo)
-
 	var err *C.char
-	C.rocksdb_delete(db.ptr, wo, ckey, C.size_t(len(key)), &err)
+	C.delete_value(db.ptr, ckey, C.size_t(len(key)), &err)
 	if err != nil {
 		return parseErr(err)
 	}
 	return nil
 }
 
+func (db *DB) Flush() {
+	flushOpts := C.rocksdb_flushoptions_create()
+	defer C.rocksdb_flushoptions_destroy(flushOpts)
+
+	var err *C.char
+	C.rocksdb_flush(db.ptr, flushOpts, &err)
+	if err != nil {
+		log.Printf("Error flushing RocksDB: %s", C.GoString(err))
+	}
+}
+
+// Close safely closes the RocksDB instance
 func (db *DB) Close() {
-	C.rocksdb_close(db.ptr)
+	if db.ptr != nil {
+		C.rocksdb_close(db.ptr)
+	}
 }
 
 func parseErr(cerr *C.char) error {
