@@ -1,15 +1,18 @@
 package handlers
 
 import (
+	"fmt"
+	"mithrildb/config"
 	"net/http"
-
-	"mithrildb/services"
 )
 
 func SetupRoutes() {
-	http.HandleFunc("/get", services.WithMetrics(handleGet))
-	http.HandleFunc("/put", services.WithMetrics(handlePut))
-	http.HandleFunc("/delete", services.WithMetrics(handleDelete))
-	http.HandleFunc("/config", handleConfig) // Ruta consolidada para configuración
-	http.HandleFunc("/metrics", services.HandleMetrics)
+	cfg := config.LoadConfig() // Load configuration
+
+	http.HandleFunc("/get", handleGet)
+	http.HandleFunc("/put", handlePut)
+	http.HandleFunc("/delete", handleDelete)
+	http.HandleFunc("/ping", handlePing)
+
+	http.ListenAndServe(":"+fmt.Sprintf("%d", cfg.Port), nil)
 }

@@ -13,7 +13,7 @@ echo "🚀 Executing Container..."
 docker run -d --rm --name $CONTAINER_NAME -p $PORT:5126 $IMAGE_NAME
 
 echo "⏳ Waiting for server..."
-until curl -s "http://localhost:$PORT/metrics" >/dev/null; do
+until curl -s "http://localhost:$PORT/ping" >/dev/null; do
     sleep 0.5
 done
 
@@ -33,16 +33,8 @@ echo "🔹 Test GET post-delete (espera error)"
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/get?key=foo")
 echo "Código de estado esperado: $STATUS"
 
-echo "🔹 Test dynamic configuration (runtime)"
-curl -s -X POST "http://localhost:$PORT/config/runtime" \
-     -H "Content-Type: application/json" \
-     -d '{"some_field":"some_value"}'
-
-echo "🔹 Get static configuration"
-curl -s "http://localhost:$PORT/config/static"
-
-echo "🔹 Show metrics"
-curl -s "http://localhost:$PORT/metrics"
+echo "🔹 Show Ping"
+curl -s "http://localhost:$PORT/ping"
 
 echo -e "\n🧹 Cleaning..."
 docker stop $CONTAINER_NAME

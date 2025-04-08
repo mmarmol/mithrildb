@@ -1,32 +1,32 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
-	"mithrildb/rocks"
 	"log"
-	"os"
+
+	"gopkg.in/ini.v1"
 )
 
-// LoadConfig carga la configuración desde un archivo o usa valores por defecto
-func LoadConfig() rocks.Config {
-	filePath := "resources/config.json"
-	var config rocks.Config
+type ServerConfig struct {
+	DBPath string
+	Port   int
+}
 
-	file, err := os.ReadFile(filePath)
-	if err != nil {
-		log.Printf("No se pudo leer el archivo de configuración, usando valores por defecto: %v", err)
-		config = *rocks.DefaultConfig()
-	} else {
-		err = json.Unmarshal(file, &config)
-		if err != nil {
-			log.Printf("Error al parsear el archivo de configuración, usando valores por defecto: %v", err)
-			config = *rocks.DefaultConfig()
-		} else {
-			log.Println("Configuración cargada desde archivo con éxito.")
-		}
+func LoadConfig() ServerConfig {
+	cfg := ServerConfig{
+		DBPath: "/data/db", // Valores por defecto
+		Port:   5126,
 	}
 
-	fmt.Printf("Configuración iniciada: DBPath=%s, Port=%d\n", config.DBPath, config.Port)
-	return config
+	file, err := ini.Load("resources/config.ini")
+	if err != nil {
+		log.Printf("Error cargando config.ini, utilizando valores por defecto: %v", err)
+		return cfg
+	}
+
+	cfg.DBPath = file.Section("Server").Key("DBPath").MustString(cfg.DBPath)
+	cfg.Port = file.Section("Server").Key("Port").MustInt(cfg.Port)
+
+	fmt.Printf("Configuración iniciada: DBPath=%s, Port=%d\n", cfg.DBPath, cfg.Port)
+	return cfg
 }
