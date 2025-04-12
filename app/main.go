@@ -24,15 +24,16 @@ func main() {
 	if cfg.RocksDB == nil {
 		log.Fatal("❌ [Database.RocksDB] section is required in config.ini")
 	}
-	rocksdb, err := db.NewRocksDBFromConfig(cfg.RocksDB)
+
+	// Inicializa RocksDB con soporte para múltiples column families
+	rocksdb, families, err := db.NewRocksDBFromConfig(*cfg.RocksDB)
 	if err != nil {
 		log.Fatalf("Error initializing RocksDB: %v", err)
 	}
-	defer rocksdb.Close()
 
-	// Create DB wrapper with default options
-	database := db.NewDB(rocksdb, cfg)
-	defer database.Close()
+	// Crea el wrapper DB (tu estructura personalizada)
+	database := db.NewDB(rocksdb, families, cfg)
+	defer database.Close() // Este cierre se encarga de cerrar tanto la base como los CFs
 
 	// Setup HTTP routes
 	handlers.SetupRoutes(database, cfg, startTime)

@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 	"mithrildb/config"
+	"os"
+	"strings"
 
 	"github.com/linxGnu/grocksdb"
 )
@@ -12,6 +14,7 @@ type DB struct {
 	TransactionDB       *grocksdb.TransactionDB
 	DefaultReadOptions  *grocksdb.ReadOptions
 	DefaultWriteOptions *grocksdb.WriteOptions
+	Families            map[string]*grocksdb.ColumnFamilyHandle
 }
 
 // RocksDBOptions contiene las opciones de configuración para RocksDB.
@@ -19,7 +22,7 @@ type RocksDBOptions struct {
 	DBPath string
 }
 
-func NewDB(rocks *grocksdb.TransactionDB, cfg config.AppConfig) *DB {
+func NewDB(rocks *grocksdb.TransactionDB, families map[string]*grocksdb.ColumnFamilyHandle, cfg config.AppConfig) *DB {
 	readOpts := grocksdb.NewDefaultReadOptions()
 	readOpts.SetFillCache(cfg.ReadDefaults.FillCache)
 	if cfg.ReadDefaults.ReadTier == "cache-only" {
@@ -35,6 +38,7 @@ func NewDB(rocks *grocksdb.TransactionDB, cfg config.AppConfig) *DB {
 
 	return &DB{
 		TransactionDB:       rocks,
+		Families:            families,
 		DefaultReadOptions:  readOpts,
 		DefaultWriteOptions: writeOpts,
 	}
@@ -46,7 +50,8 @@ func (db *DB) Close() {
 	db.TransactionDB.Close()
 }
 
-func NewRocksDBFromConfig(cfg *config.RocksDBConfig) (*grocksdb.TransactionDB, error) {
+// NewRocksDBFromConfig abre o crea una instancia de RocksDB con soporte para múltiples column families.
+func NewRocksDBFromConfig(cfg config.RocksDBConfig) (*grocksdb.TransactionDB, map[string]*grocksdb.ColumnFamilyHandle, error) {
 	opts := grocksdb.NewDefaultOptions()
 	opts.SetCreateIfMissing(cfg.CreateIfMissing)
 	opts.SetWriteBufferSize(uint64(cfg.WriteBufferSize))
@@ -54,7 +59,7 @@ func NewRocksDBFromConfig(cfg *config.RocksDBConfig) (*grocksdb.TransactionDB, e
 	opts.SetMaxOpenFiles(cfg.MaxOpenFiles)
 	opts.SetStatsDumpPeriodSec(uint(cfg.StatsDumpPeriod.Seconds()))
 
-	// Block-based table config con cache
+	// Configuración de tabla basada en bloques y cache
 	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
 	cache := grocksdb.NewLRUCache(uint64(cfg.BlockCacheSize))
 	bbto.SetBlockCache(cache)
@@ -80,11 +85,40 @@ func NewRocksDBFromConfig(cfg *config.RocksDBConfig) (*grocksdb.TransactionDB, e
 	}
 
 	txnOpts := grocksdb.NewDefaultTransactionDBOptions()
+	dbPath := cfg.DBPath
 
-	db, err := grocksdb.OpenTransactionDb(opts, txnOpts, cfg.DBPath)
-	if err != nil {
-		return nil, fmt.Errorf("error al abrir la base de datos RocksDB: %w", err)
+	var cfNames []string
+	if _, err := os.Stat(dbPath); err == nil {
+		cfNames, err = grocksdb.ListColumnFamilies(opts, dbPath)
+		if err != nil {
+			// Esto indica que el directorio existe, pero no hay base aún
+			fmt.Printf("⚠️  No se encontraron familias, inicializando con 'default'")
+			cfNames = []string{"default"}
+		} else if len(cfNames) == 0 {
+			cfNames = []string{"default"}
+		}
+	} else {
+		// Directorio no existe → crear base nueva
+		cfNames = []string{"default"}
 	}
 
-	return db, nil
+	cfOpts := make([]*grocksdb.Options, len(cfNames))
+	for i := range cfNames {
+		// Reutilizamos las mismas opciones para cada CF
+		cfOpts[i] = opts
+	}
+
+	db, cfHandles, err := grocksdb.OpenTransactionDbColumnFamilies(
+		opts, txnOpts, dbPath, cfNames, cfOpts,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open DB with column families: %w", err)
+	}
+
+	handles := make(map[string]*grocksdb.ColumnFamilyHandle, len(cfNames))
+	for i, name := range cfNames {
+		handles[strings.ToLower(name)] = cfHandles[i]
+	}
+
+	return db, handles, nil
 }

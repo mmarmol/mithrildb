@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"gopkg.in/ini.v1"
@@ -42,15 +43,18 @@ type AppConfig struct {
 	ReadDefaults  ReadOptionsConfig
 }
 
-// LoadConfig lee y aplica la configuración desde el archivo resources/config.ini
 func LoadConfig() AppConfig {
 	cfg := AppConfig{
 		Server: ServerConfig{
 			Port: 5126,
 		},
 	}
+	path := os.Getenv("CONFIG_PATH")
+	if path == "" {
+		path = "resources/config.ini"
+	}
 
-	file, err := ini.Load("resources/config.ini")
+	file, err := ini.Load(path)
 	if err != nil {
 		log.Printf("⚠️  Error cargando config.ini, usando valores por defecto: %v", err)
 	} else {

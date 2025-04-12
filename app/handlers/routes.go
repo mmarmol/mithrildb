@@ -17,4 +17,14 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	http.Handle("/ping", PingHandler())
 	http.Handle("/list", ListHandler(database))
 	http.Handle("/metrics", MetricsHandler(database, cfg, startTime))
+	http.HandleFunc("/families", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			ListFamiliesHandler(database)(w, r)
+		case http.MethodPost:
+			CreateFamilyHandler(database)(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 }
