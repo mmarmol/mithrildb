@@ -1,2 +1,4 @@
+github.com/linxGnu/grocksdb v1.9.9 h1:CzSS/vHLtVIdxdrjvqWR/sm93u/0eB6UcoO14YqObnw=
+github.com/linxGnu/grocksdb v1.9.9/go.mod h1:C3CNe9UYc9hlEM2pC82AqiGS3LRW537u9LFV4wIZuHk=
 gopkg.in/ini.v1 v1.67.0 h1:Dgnx+6+nfE+IfzjUEISNeydPJh9AXNNsWbGP9KzCsOA=
 gopkg.in/ini.v1 v1.67.0/go.mod h1:pNLf8WUiyNEtQjuu5G5vTm06TEv9tsIgeAvK8hOrP4k=

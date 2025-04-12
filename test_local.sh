@@ -32,12 +32,26 @@ curl -s -X POST "http://localhost:$PORT/delete?key=foo"
 echo "🔹 Test GET post-delete (espera error)"
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/get?key=foo")
 echo "Código de estado esperado: $STATUS"
+if [ "$STATUS" -ne 404 ]; then
+    echo "❌ Esperaba 404 después de borrar, pero recibí $STATUS"
+    exit 1
+fi
 
-echo "🔹 Show Ping"
+echo "🔹 Test PING"
 curl -s "http://localhost:$PORT/ping"
+
+echo -e "\n🔹 Test HEALTH"
+HEALTH=$(curl -s "http://localhost:$PORT/health")
+echo "Respuesta HEALTH: $HEALTH"
+echo "$HEALTH" | grep -q '"healthy"' || { echo "❌ HEALTH no contiene 'healthy'"; exit 1; }
+
+echo -e "\n🔹 Test STATS"
+STATS=$(curl -s "http://localhost:$PORT/stats")
+echo "Respuesta STATS: $STATS"
+echo "$STATS" | grep -q '"uptime"' || { echo "❌ STATS no contiene 'uptime'"; exit 1; }
+echo "$STATS" | grep -q '"db_path"' || { echo "❌ STATS no contiene 'db_path'"; exit 1; }
 
 echo -e "\n🧹 Cleaning..."
 docker stop $CONTAINER_NAME
 
-echo "✅ Test finished."
-
+echo "✅ All tests passed successfully."
