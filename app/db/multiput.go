@@ -11,8 +11,7 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// MultiPut stores multiple key-value pairs as Documents with metadata.
-func (db *DB) MultiPut(cf string, pairs map[string]string, opts *grocksdb.WriteOptions) error {
+func (db *DB) MultiPut(cf string, pairs map[string]interface{}, opts *grocksdb.WriteOptions) error {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return fmt.Errorf("column family '%s' does not exist", cf)
@@ -22,13 +21,19 @@ func (db *DB) MultiPut(cf string, pairs map[string]string, opts *grocksdb.WriteO
 	defer batch.Destroy()
 
 	now := time.Now()
-	for k, v := range pairs {
+
+	for k, rawValue := range pairs {
+		// Validate value type (defaults to json for now)
+		if err := model.ValidateValue(rawValue, model.DocTypeJSON); err != nil {
+			return fmt.Errorf("invalid value for key '%s': %w", k, err)
+		}
+
 		doc := model.Document{
 			Key:   k,
-			Value: v,
+			Value: rawValue,
 			Meta: model.Metadata{
 				Rev:        uuid.NewString(),
-				Type:       model.DocTypeJSON,
+				Type:       model.DocTypeJSON, // All are json for now
 				UpdatedAt:  now,
 				Expiration: 0,
 			},
@@ -38,6 +43,7 @@ func (db *DB) MultiPut(cf string, pairs map[string]string, opts *grocksdb.WriteO
 		if err != nil {
 			return fmt.Errorf("failed to encode document for key '%s': %w", k, err)
 		}
+
 		batch.PutCF(handle, []byte(k), data)
 	}
 

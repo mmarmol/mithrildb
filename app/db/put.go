@@ -40,6 +40,10 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		return nil, errors.New("value cannot be nil")
 	}
 
+	if err := model.ValidateValue(opts.Value, opts.Type); err != nil {
+		return nil, fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
+	}
+
 	if opts.Cas != "" {
 		readOpts := grocksdb.NewDefaultReadOptions()
 		readOpts.SetFillCache(false)
