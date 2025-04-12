@@ -1,12 +1,16 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
+
+	"mithrildb/model"
 
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (map[string]*string, error) {
+// MultiGet retrieves multiple documents by keys from a specific column family.
+func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (map[string]*model.Document, error) {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return nil, fmt.Errorf("column family '%s' does not exist", cf)
@@ -33,13 +37,16 @@ func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (ma
 		}
 	}()
 
-	result := make(map[string]*string, len(keys))
+	result := make(map[string]*model.Document, len(keys))
 	for i, val := range values {
 		if val == nil || val.Size() == 0 {
 			result[keys[i]] = nil
 		} else {
-			s := string(val.Data())
-			result[keys[i]] = &s
+			var doc model.Document
+			if err := json.Unmarshal(val.Data(), &doc); err != nil {
+				return nil, fmt.Errorf("failed to decode document for key '%s': %w", keys[i], err)
+			}
+			result[keys[i]] = &doc
 		}
 	}
 

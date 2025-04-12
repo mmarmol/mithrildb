@@ -2,14 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"mithrildb/config"
 	"mithrildb/db"
 	"net/http"
 	"strconv"
 )
 
-func ListHandler(database *db.DB) http.HandlerFunc {
+// ListKeysHandler handles GET /keys
+// Supports optional parameters: cf, prefix, start_after, limit, fill_cache, read_tier
+func ListKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		cf := r.URL.Query().Get("cf")
 		if cf == "" {
 			cf = "default"
@@ -26,7 +28,13 @@ func ListHandler(database *db.DB) http.HandlerFunc {
 			}
 		}
 
+		// Read options
 		opts := database.DefaultReadOptions
+		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
+		if override {
+			opts = db.BuildReadOptions(r, defaults)
+			defer opts.Destroy()
+		}
 
 		keys, err := database.ListKeys(cf, prefix, startAfter, limit, opts)
 		if err != nil {

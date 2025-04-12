@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"mithrildb/config"
 	"mithrildb/db"
+	"mithrildb/model"
 	"net/http"
 )
 
@@ -20,21 +22,14 @@ func getQueryParam(r *http.Request, key string) (string, error) {
 	return val, nil
 }
 
-func GetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
+// GetHandler retrieves a full document including metadata.
+func GetHandler(database *db.DB, defaults config.ReadOptionsConfig, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve the key and cf parameters
-		key, err := getQueryParam(r, "key")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
 		cf := r.URL.Query().Get("cf")
 		if cf == "" {
-			cf = "default" // Default column family
+			cf = "default"
 		}
 
-		// Determine read options
 		opts := database.DefaultReadOptions
 		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
 		if override {
@@ -42,27 +37,24 @@ func GetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Handler
 			defer opts.Destroy()
 		}
 
-		// Retrieve the handle for the column family
-		value, err := database.Get(cf, key, opts)
+		doc, err := database.Get(cf, key, opts)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		if value == "" {
+		if doc == nil {
 			http.NotFound(w, r)
 			return
 		}
 
-		// Return the value as plain text
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(value))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(doc)
 	}
 }
 
+// PutHandler stores a document using the new document model with metadata and optional CAS.
 func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve the key, value, and cf parameters
 		key, err := getQueryParam(r, "key")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -76,10 +68,17 @@ func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Handle
 
 		cf := r.URL.Query().Get("cf")
 		if cf == "" {
-			cf = "default" // Default column family
+			cf = "default"
 		}
 
-		// Determine write options
+		cas := r.URL.Query().Get("cas")
+		typeHint := r.URL.Query().Get("type")
+		if typeHint == "" {
+			typeHint = model.DocTypeJSON
+		}
+
+		expiration := int64(0) // TTL not yet parsed from request (could be added later)
+
 		opts := database.DefaultWriteOptions
 		override := r.URL.Query().Has("sync") || r.URL.Query().Has("disable_wal") || r.URL.Query().Has("no_slowdown")
 		if override {
@@ -87,24 +86,37 @@ func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Handle
 			defer opts.Destroy()
 		}
 
-		// Call Put with the specified column family
-		if err := database.PutDirect(cf, key, val, opts); err != nil {
+		putOpts := db.PutOptions{
+			ColumnFamily: cf,
+			Key:          key,
+			Value:        val,
+			Cas:          cas,
+			Type:         typeHint,
+			Expiration:   expiration,
+			WriteOptions: opts,
+		}
+
+		doc, err := database.PutWithOptions(putOpts)
+		if err != nil {
+			if err == db.ErrRevisionMismatch {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusPreconditionFailed)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": err.Error(),
+				})
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(doc)
 	}
 }
 
-func DeleteHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+func DeleteHandler(database *db.DB, defaults config.WriteOptionsConfig, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve the key and cf parameters
-		key, err := getQueryParam(r, "key")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
 		cf := r.URL.Query().Get("cf")
 		if cf == "" {
 			cf = "default" // Default column family
