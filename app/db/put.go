@@ -44,7 +44,27 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		return nil, fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
 	}
 
+	// Transaction options only if CAS is provided
+	var txn *grocksdb.Transaction
+	var writeOpts *grocksdb.WriteOptions
+	var txnOpts *grocksdb.TransactionOptions
+
+	// Prepare write options
+	writeOpts = opts.WriteOptions // Use the write options passed in opts
+
+	// If CAS is provided, handle it within a transaction
 	if opts.Cas != "" {
+		// Set up transaction options
+		txnOpts = grocksdb.NewDefaultTransactionOptions()
+		txnOpts.SetSetSnapshot(true) // Take a snapshot to avoid reading inconsistencies
+		txnOpts.SetLockTimeout(1000) // Set lock timeout (e.g., 1 second)
+		defer txnOpts.Destroy()
+
+		// Start a new transaction
+		txn = db.TransactionDB.TransactionBegin(writeOpts, txnOpts, nil)
+		defer txn.Destroy()
+
+		// Check if the document exists and its revision matches the CAS
 		readOpts := grocksdb.NewDefaultReadOptions()
 		readOpts.SetFillCache(false)
 		defer readOpts.Destroy()
@@ -54,10 +74,16 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 			return nil, err
 		}
 		if existingDoc != nil && existingDoc.Meta.Rev != opts.Cas {
+			// CAS conflict, rollback transaction
+			txn.Rollback()
 			return nil, ErrRevisionMismatch
 		}
+	} else {
+		// No CAS, no need for a transaction, use direct Put
+		txn = nil
 	}
 
+	// Prepare the new document
 	now := time.Now()
 	doc := model.Document{
 		Key:   opts.Key,
@@ -70,15 +96,32 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		},
 	}
 
+	// Serialize the document into JSON
 	data, err := json.Marshal(doc)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling document: %w", err)
 	}
 
-	err = db.TransactionDB.PutCF(opts.WriteOptions, handle, []byte(opts.Key), data)
-	if err != nil {
-		return nil, err
+	// If using transaction, do the Put in the transaction
+	if txn != nil {
+		if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
+			// If put fails, rollback the transaction
+			txn.Rollback()
+			return nil, fmt.Errorf("failed to put document in transaction: %w", err)
+		}
+		// Commit transaction after successful put
+		if err := txn.Commit(); err != nil {
+			txn.Rollback() // Ensure rollback on commit failure
+			return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		}
+	} else {
+		// If no transaction, do the Put directly
+		err = db.TransactionDB.PutCF(writeOpts, handle, []byte(opts.Key), data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to put document: %w", err)
+		}
 	}
 
+	// Return the stored document
 	return &doc, nil
 }
