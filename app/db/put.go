@@ -1,11 +1,16 @@
 package db
 
-import "github.com/linxGnu/grocksdb"
+import (
+	"fmt"
 
-// Put inserta o actualiza un valor asociado a una clave en la base de datos dentro de una transacción.
-func (db *DB) PutDirect(key string, value string) error {
-	wo := grocksdb.NewDefaultWriteOptions()
-	defer wo.Destroy()
+	"github.com/linxGnu/grocksdb"
+)
 
-	return db.TransactionDB.Put(wo, []byte(key), []byte(value))
+func (db *DB) PutDirect(cf, key, value string, opts *grocksdb.WriteOptions) error {
+	handle, ok := db.Families[cf]
+	if !ok {
+		return fmt.Errorf("column family '%s' does not exist", cf)
+	}
+
+	return db.TransactionDB.PutCF(opts, handle, []byte(key), []byte(value))
 }

@@ -23,7 +23,11 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 			return
 		}
 
-		// Determine if we need to override read options
+		cf := r.URL.Query().Get("cf")
+		if cf == "" {
+			cf = "default"
+		}
+
 		opts := database.DefaultReadOptions
 		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
 		if override {
@@ -31,8 +35,7 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 			defer opts.Destroy()
 		}
 
-		// Use DB-level MultiGet
-		result, err := database.MultiGet(req.Keys, opts)
+		result, err := database.MultiGet(cf, req.Keys, opts)
 		if err != nil {
 			http.Error(w, "error reading from database: "+err.Error(), http.StatusInternalServerError)
 			return

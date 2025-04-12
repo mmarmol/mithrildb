@@ -1,10 +1,17 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) MultiGet(keys []string, opts *grocksdb.ReadOptions) (map[string]*string, error) {
+func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (map[string]*string, error) {
+	handle, ok := db.Families[cf]
+	if !ok {
+		return nil, fmt.Errorf("column family '%s' does not exist", cf)
+	}
+
 	if len(keys) == 0 {
 		return nil, nil
 	}
@@ -14,7 +21,7 @@ func (db *DB) MultiGet(keys []string, opts *grocksdb.ReadOptions) (map[string]*s
 		byteKeys[i] = []byte(k)
 	}
 
-	values, err := db.TransactionDB.MultiGet(opts, byteKeys...)
+	values, err := db.TransactionDB.MultiGetWithCF(opts, handle, byteKeys...)
 	if err != nil {
 		return nil, err
 	}

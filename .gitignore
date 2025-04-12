@@ -1,3 +1,4 @@
 .vscode
 rocksdb
 bin
+*_debug*

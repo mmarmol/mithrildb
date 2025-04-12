@@ -1,11 +1,16 @@
 package db
 
-import "github.com/linxGnu/grocksdb"
+import (
+	"fmt"
 
-// Delete elimina un valor utilizando una clave de la base de datos dentro de una transacción.
-func (db *DB) DeleteDirect(key string) error {
-	wo := grocksdb.NewDefaultWriteOptions()
-	defer wo.Destroy()
+	"github.com/linxGnu/grocksdb"
+)
 
-	return db.TransactionDB.Delete(wo, []byte(key))
+func (db *DB) DeleteDirect(cf, key string, opts *grocksdb.WriteOptions) error {
+	handle, ok := db.Families[cf]
+	if !ok {
+		return fmt.Errorf("column family '%s' does not exist", cf)
+	}
+
+	return db.TransactionDB.DeleteCF(opts, handle, []byte(key))
 }

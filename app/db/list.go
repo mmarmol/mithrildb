@@ -1,27 +1,34 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) ListKeys(prefix string, startAfter string, limit int) ([]string, error) {
+func (db *DB) ListKeys(cf string, prefix string, startAfter string, limit int, opts *grocksdb.ReadOptions) ([]string, error) {
+	handle, ok := db.Families[cf]
+	if !ok {
+		return nil, fmt.Errorf("column family '%s' does not exist", cf)
+	}
+
 	var keys []string
 
-	readOpts := grocksdb.NewDefaultReadOptions()
-	readOpts.SetFillCache(false) // avoid polluting the read cache
-	defer readOpts.Destroy()
+	// Si no se pasan opciones, usamos las predeterminadas
+	if opts == nil {
+		opts = db.DefaultReadOptions
+	}
 
-	it := db.TransactionDB.NewIterator(readOpts)
+	it := db.TransactionDB.NewIteratorCF(opts, handle)
 	defer it.Close()
 
 	startKey := []byte(startAfter)
 	prefixBytes := []byte(prefix)
 
-	// Start iteration
 	if len(startKey) > 0 {
 		it.Seek(startKey)
 		if it.Valid() && string(it.Key().Data()) == startAfter {
-			it.Next() // skip the startAfter key itself
+			it.Next()
 		}
 	} else if len(prefixBytes) > 0 {
 		it.Seek(prefixBytes)
@@ -35,7 +42,6 @@ func (db *DB) ListKeys(prefix string, startAfter string, limit int) ([]string, e
 
 		k := string(key.Data())
 
-		// Optional: enforce prefix filtering even if we Seek by prefix
 		if len(prefixBytes) > 0 && !hasPrefix(k, prefix) {
 			break
 		}

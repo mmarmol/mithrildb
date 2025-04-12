@@ -1,20 +1,25 @@
 package db
 
-import "github.com/linxGnu/grocksdb"
+import (
+	"fmt"
 
-// Get recupera un valor utilizando una clave de la base de datos.
-func (db *DB) Get(key string) (string, error) {
-	readOpts := grocksdb.NewDefaultReadOptions()
-	defer readOpts.Destroy() // Limpia las opciones de lectura
+	"github.com/linxGnu/grocksdb"
+)
 
-	value, err := db.TransactionDB.Get(readOpts, []byte(key))
+func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (string, error) {
+	handle, ok := db.Families[cf]
+	if !ok {
+		return "", fmt.Errorf("column family '%s' does not exist", cf)
+	}
+
+	value, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
 	if err != nil {
 		return "", err
 	}
-	defer value.Free() // ⚠️ Muy importante liberar la Slice
+	defer value.Free()
 
 	if value.Size() == 0 {
-		return "", nil // Clave inexistente o valor vacío
+		return "", nil
 	}
 
 	return string(value.Data()), nil
