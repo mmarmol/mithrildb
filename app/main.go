@@ -17,44 +17,49 @@ import (
 var startTime = time.Now()
 
 func main() {
+	// Load config from resources/config.ini
 	cfg := config.LoadConfig()
 
-	database, err := db.Open(db.RocksDBOptions{
-		DBPath: cfg.DBPath,
-	})
-	if err != nil {
-		log.Fatalf("Error al abrir la base de datos: %v", err)
+	// Initialize RocksDB
+	if cfg.RocksDB == nil {
+		log.Fatal("❌ [Database.RocksDB] section is required in config.ini")
 	}
+	rocksdb, err := db.NewRocksDBFromConfig(cfg.RocksDB)
+	if err != nil {
+		log.Fatalf("Error initializing RocksDB: %v", err)
+	}
+	defer rocksdb.Close()
+
+	// Create DB wrapper with default options
+	database := db.NewDB(rocksdb, cfg)
 	defer database.Close()
 
-	handlers.SetupRoutes(database, cfg.DBPath, startTime) // ahora le pasamos el DBPath para el endpoint /stats
+	// Setup HTTP routes
+	handlers.SetupRoutes(database, cfg, startTime)
 
-	// Configura el servidor HTTP
-	addr := fmt.Sprintf(":%d", cfg.Port)
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	server := &http.Server{Addr: addr}
 
-	// Canal para señales del sistema
+	// Handle graceful shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	// Ejecuta el servidor en una goroutine
 	go func() {
-		log.Printf("Servidor escuchando en %s", addr)
+		log.Printf("🚀 Server listening on %s", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Error al iniciar el servidor HTTP: %v", err)
+			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
 
-	// Espera señal para detener
 	<-stop
-	log.Println("Deteniendo servidor...")
+	log.Println("🧨 Shutting down server...")
 
-	// Apaga el servidor de forma controlada
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Error durante el apagado del servidor: %v", err)
+		log.Fatalf("Shutdown error: %v", err)
 	}
 
-	log.Println("Servidor detenido correctamente.")
+	log.Println("✅ Server stopped cleanly.")
 }
