@@ -27,10 +27,7 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 			return
 		}
 
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default"
-		}
+		cf := getCfQueryParam(r)
 
 		opts := database.DefaultReadOptions
 		override := db.HasReadOptions(r)

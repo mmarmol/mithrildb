@@ -10,6 +10,10 @@ import (
 
 // SetupRoutes registers all HTTP routes with their handlers using a RESTful structure.
 func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
+
+	http.HandleFunc("/config", ConfigGetHandler(cfg))
+	http.HandleFunc("/config/update", ConfigUpdateHandler(cfg, database))
+
 	// Standard endpoints
 	http.HandleFunc("/ping", PingHandler())
 	http.HandleFunc("/metrics", MetricsHandler(database, cfg, startTime))

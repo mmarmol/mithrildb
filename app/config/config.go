@@ -120,8 +120,8 @@ func LoadConfig() AppConfig {
 }
 
 // UpdateConfigFromMap processes updates to the RocksDB section of the config file.
-func UpdateConfigFromMap(cfg *AppConfig, configPath string, req map[string]interface{}) (*UpdateResult, error) {
-	iniFile, err := ini.Load(configPath)
+func UpdateConfigFromMap(cfg AppConfig, req map[string]interface{}) (*UpdateResult, error) {
+	iniFile, err := ini.Load(cfg.RocksDB.DBPath)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func UpdateConfigFromMap(cfg *AppConfig, configPath string, req map[string]inter
 	}
 
 	if modified {
-		if err := iniFile.SaveTo(configPath); err != nil {
+		if err := iniFile.SaveTo(cfg.RocksDB.DBPath); err != nil {
 			return nil, err
 		}
 	}

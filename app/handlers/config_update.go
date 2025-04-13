@@ -9,7 +9,7 @@ import (
 )
 
 // ConfigUpdateHandler handles POST /config/update
-func ConfigUpdateHandler(cfg *config.AppConfig, dbInstance *db.DB, configPath string) http.HandlerFunc {
+func ConfigUpdateHandler(cfg config.AppConfig, dbInstance *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -17,7 +17,7 @@ func ConfigUpdateHandler(cfg *config.AppConfig, dbInstance *db.DB, configPath st
 			return
 		}
 
-		result, err := config.UpdateConfigFromMap(cfg, configPath, req)
+		result, err := config.UpdateConfigFromMap(cfg, req)
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Could not update configuration")
 			return
