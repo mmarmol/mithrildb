@@ -11,6 +11,7 @@ import (
 // SetupRoutes registers all HTTP routes with their handlers using a RESTful structure.
 func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
+	// Config endpoints
 	http.HandleFunc("/config", ConfigGetHandler(cfg))
 	http.HandleFunc("/config/update", ConfigUpdateHandler(cfg, database))
 
@@ -91,6 +92,15 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	http.HandleFunc("/documents/replace", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			ReplaceHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// Increment counter document
+	http.HandleFunc("/documents/increment", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			CounterIncrementHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

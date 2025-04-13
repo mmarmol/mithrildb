@@ -170,5 +170,44 @@ echo
 echo "🔹 METRICS"
 curl -s "http://localhost:$PORT/metrics"
 
+# -----------------------------------
+# COUNTER
+# -----------------------------------
+echo
+echo "🔹 Create counter document"
+curl -s -X POST "http://localhost:$PORT/documents?cf=logs&key=mycounter&type=counter" \
+  -H "Content-Type: application/json" -d '{"value": 10}' >/dev/null
+echo "✅ Counter document created with value 10"
+
+echo
+echo "🔹 Increment counter by 5"
+INC_RESPONSE=$(curl -s -X POST "http://localhost:$PORT/documents/increment?cf=logs&key=mycounter" \
+  -H "Content-Type: application/json" -d '{"delta": 5}')
+echo "Response: $INC_RESPONSE"
+echo "$INC_RESPONSE" | grep -q '"new":15' && echo "✅ Counter incremented to 15" || (echo "❌ Counter increment failed"; exit 1)
+
+echo
+echo "🔹 Decrement counter by 2"
+DEC_RESPONSE=$(curl -s -X POST "http://localhost:$PORT/documents/increment?cf=logs&key=mycounter" \
+  -H "Content-Type: application/json" -d '{"delta": -2}')
+echo "Response: $DEC_RESPONSE"
+echo "$DEC_RESPONSE" | grep -q '"new":13' && echo "✅ Counter decremented to 13" || (echo "❌ Counter decrement failed"; exit 1)
+
+# -----------------------------------
+# REPLACE
+# -----------------------------------
+echo
+echo "🔹 Replace existing document"
+REPLACE_OK=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:$PORT/documents/replace?cf=logs&key=k1" \
+  -H "Content-Type: application/json" -d '{"value": "replaced"}')
+[ "$REPLACE_OK" = "200" ] && echo "✅ Replace succeeded for existing key" || (echo "❌ Replace failed"; exit 1)
+
+echo
+echo "🔹 Replace on non-existing key (should fail)"
+REPLACE_FAIL=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:$PORT/documents/replace?cf=logs&key=doesnotexist" \
+  -H "Content-Type: application/json" -d '{"value": "something"}')
+[ "$REPLACE_FAIL" = "404" ] && echo "✅ Replace correctly failed on missing key" || (echo "❌ Replace should have failed"; exit 1)
+
+
 echo
 echo "✅ All tests completed successfully."
