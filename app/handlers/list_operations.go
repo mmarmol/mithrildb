@@ -33,7 +33,7 @@ func ListPushHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			defer opts.Destroy()
 		}
 
-		res, err := database.ListPush(db.ListPushOptions{
+		_, err = database.ListPush(db.ListPushOptions{
 			ListOpOptions: db.ListOpOptions{
 				ColumnFamily: cf,
 				Key:          key,
@@ -45,7 +45,10 @@ func ListPushHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			mapAndRespondWithError(w, err)
 			return
 		}
-		json.NewEncoder(w).Encode(res)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "ok",
+		})
 	}
 }
 
@@ -75,8 +78,8 @@ func ListPopHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "ok",
-			"value":  res,
+			"status":  "ok",
+			"element": res,
 		})
 	}
 }
@@ -104,7 +107,10 @@ func ListRangeHandler(database *db.DB, defaults config.ReadOptionsConfig) http.H
 			mapAndRespondWithError(w, err)
 			return
 		}
-		json.NewEncoder(w).Encode(res)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"list": res,
+		})
 	}
 }
 
@@ -131,7 +137,7 @@ func ListUnshiftHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			defer opts.Destroy()
 		}
 
-		result, err := database.ListUnshift(db.ListPushOptions{
+		_, err = database.ListUnshift(db.ListPushOptions{
 			ListOpOptions: db.ListOpOptions{
 				ColumnFamily: cf,
 				Key:          key,
@@ -147,7 +153,6 @@ func ListUnshiftHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "ok",
-			"result": result,
 		})
 	}
 }
@@ -179,8 +184,8 @@ func ListShiftHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "ok",
-			"value":  result,
+			"status":  "ok",
+			"element": result,
 		})
 	}
 }

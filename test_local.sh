@@ -238,12 +238,12 @@ echo "$RANGE" | grep -q '"c"' && echo "✅ 'c' is at end" || echo "❌ 'c' missi
 echo "➡️ Shift value"
 SHIFTED=$(curl -s -X POST "http://localhost:$PORT/documents/lists/shift?cf=logs&key=mylist")
 echo "Shifted value: $SHIFTED"
-echo "$SHIFTED" | grep -q '"value":"x"' && echo "✅ Shifted out 'x'" || echo "❌ Unexpected shift result"
+echo "$SHIFTED" | grep -q '"element":"x"' && echo "✅ Shifted out 'x'" || echo "❌ Unexpected shift result"
 
 echo "➡️ Pop value"
 POPPED=$(curl -s -X POST "http://localhost:$PORT/documents/lists/pop?cf=logs&key=mylist")
 echo "Popped value: $POPPED"
-echo "$POPPED" | grep -q '"value":"c"' && echo "✅ Popped 'c'" || echo "❌ Unexpected pop result"
+echo "$POPPED" | grep -q '"element":"c"' && echo "✅ Popped 'c'" || echo "❌ Unexpected pop result"
 
 # Verificar estado final de la lista
 FINAL=$(curl -s "http://localhost:$PORT/documents/lists/range?cf=logs&key=mylist&start=0&end=-1")
