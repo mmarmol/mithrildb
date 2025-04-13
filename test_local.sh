@@ -107,6 +107,45 @@ echo "$RESP" | grep -q '"k2":' && echo "✅ k2 ok" || echo "❌ k2 missing"
 echo "$RESP" | grep -q '"k3":null' && echo "✅ k3 null" || echo "❌ k3 unexpected"
 
 # -----------------------------------
+# INSERT
+# -----------------------------------
+
+echo
+echo "🔹 Test INSERT document (should succeed)"
+INSERT_BODY='{"value":"initial"}'
+INSERT_RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
+  -H "Content-Type: application/json" \
+  -d "$INSERT_BODY" \
+  "http://localhost:$PORT/documents/insert?cf=logs&key=insert-key")
+
+if [ "$INSERT_RESPONSE" = "200" ]; then
+  echo "✅ Insert succeeded"
+else
+  echo "❌ Insert failed with status $INSERT_RESPONSE"
+  exit 1
+fi
+
+echo
+echo "🔹 Test INSERT again with same key (should fail)"
+INSERT_CONFLICT=$(curl -s -w "%{http_code}" -o /dev/null -X POST \
+  -H "Content-Type: application/json" \
+  -d "$INSERT_BODY" \
+  "http://localhost:$PORT/documents/insert?cf=logs&key=insert-key")
+
+if [ "$INSERT_CONFLICT" = "409" ]; then
+  echo "✅ Insert conflict correctly detected"
+else
+  echo "❌ Insert conflict not handled (expected 409, got $INSERT_CONFLICT)"
+  exit 1
+fi
+
+echo
+echo "🔹 GET inserted document"
+INSERTED_DOC=$(curl -s "http://localhost:$PORT/documents/insert-key?cf=logs")
+echo "Response: $INSERTED_DOC"
+echo "$INSERTED_DOC" | grep -q '"value":"initial"' && echo "✅ Value is correct" || (echo "❌ Incorrect value"; exit 1)
+
+# -----------------------------------
 # LIST KEYS
 # -----------------------------------
 echo

@@ -69,14 +69,24 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		readOpts.SetFillCache(false)
 		defer readOpts.Destroy()
 
-		existingDoc, err := db.Get(opts.ColumnFamily, opts.Key, readOpts)
+		val, err := txn.GetWithCF(readOpts, handle, []byte(opts.Key))
 		if err != nil {
+			txn.Rollback()
 			return nil, err
 		}
-		if existingDoc != nil && existingDoc.Meta.Rev != opts.Cas {
-			// CAS conflict, rollback transaction
-			txn.Rollback()
-			return nil, ErrRevisionMismatch
+		defer val.Free()
+
+		// Only check CAS if value exists
+		if val.Size() > 0 {
+			var existingDoc model.Document
+			if err := json.Unmarshal(val.Data(), &existingDoc); err != nil {
+				txn.Rollback()
+				return nil, fmt.Errorf("failed to unmarshal existing document: %w", err)
+			}
+			if existingDoc.Meta.Rev != opts.Cas {
+				txn.Rollback()
+				return nil, ErrRevisionMismatch
+			}
 		}
 	} else {
 		// No CAS, no need for a transaction, use direct Put
