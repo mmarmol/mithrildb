@@ -8,14 +8,11 @@ import (
 
 func DeleteHandler(database *db.DB, defaults config.WriteOptionsConfig, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default" // Default column family
-		}
+		cf := getCfQueryParam(r)
 
 		// Determine write options
 		opts := database.DefaultWriteOptions
-		override := r.URL.Query().Has("sync") || r.URL.Query().Has("disable_wal") || r.URL.Query().Has("no_slowdown")
+		override := db.HasWriteOptions(r)
 		if override {
 			opts = db.BuildWriteOptions(r, defaults)
 			defer opts.Destroy()

@@ -33,7 +33,7 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 		}
 
 		opts := database.DefaultReadOptions
-		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
+		override := db.HasReadOptions(r)
 		if override {
 			opts = db.BuildReadOptions(r, defaults)
 			defer opts.Destroy()

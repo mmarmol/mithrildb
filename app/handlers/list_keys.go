@@ -12,10 +12,7 @@ import (
 // Supports optional parameters: cf, prefix, start_after, limit, fill_cache, read_tier
 func ListKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default"
-		}
+		cf := getCfQueryParam(r)
 
 		prefix := r.URL.Query().Get("prefix")
 		startAfter := r.URL.Query().Get("start_after")
@@ -30,7 +27,7 @@ func ListKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 
 		// Read options
 		opts := database.DefaultReadOptions
-		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
+		override := db.HasReadOptions(r)
 		if override {
 			opts = db.BuildReadOptions(r, defaults)
 			defer opts.Destroy()

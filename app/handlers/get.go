@@ -10,13 +10,10 @@ import (
 // GetHandler retrieves a full document including metadata.
 func GetHandler(database *db.DB, defaults config.ReadOptionsConfig, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default"
-		}
+		cf := getCfQueryParam(r)
 
 		opts := database.DefaultReadOptions
-		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
+		override := db.HasReadOptions(r)
 		if override {
 			opts = db.BuildReadOptions(r, defaults)
 			defer opts.Destroy()

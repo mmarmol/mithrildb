@@ -11,10 +11,7 @@ import (
 // ListDocumentsHandler handles GET /documents with optional prefix, pagination and read options.
 func ListDocumentsHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default"
-		}
+		cf := getCfQueryParam(r)
 
 		prefix := r.URL.Query().Get("prefix")
 		startAfter := r.URL.Query().Get("start_after")
@@ -29,7 +26,7 @@ func ListDocumentsHandler(database *db.DB, defaults config.ReadOptionsConfig) ht
 
 		// Read options (use default for now)
 		opts := database.DefaultReadOptions
-		override := r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
+		override := db.HasReadOptions(r)
 		if override {
 			opts = db.BuildReadOptions(r, defaults)
 			defer opts.Destroy()

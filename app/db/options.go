@@ -8,6 +8,10 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
+func HasWriteOptions(r *http.Request) bool {
+	return r.URL.Query().Has("sync") || r.URL.Query().Has("disable_wal") || r.URL.Query().Has("no_slowdown")
+}
+
 func BuildWriteOptions(r *http.Request, defaults config.WriteOptionsConfig) *grocksdb.WriteOptions {
 	opts := grocksdb.NewDefaultWriteOptions()
 
@@ -33,6 +37,10 @@ func BuildWriteOptions(r *http.Request, defaults config.WriteOptionsConfig) *gro
 	}
 
 	return opts
+}
+
+func HasReadOptions(r *http.Request) bool {
+	return r.URL.Query().Has("fill_cache") || r.URL.Query().Has("read_tier")
 }
 
 func BuildReadOptions(r *http.Request, defaults config.ReadOptionsConfig) *grocksdb.ReadOptions {

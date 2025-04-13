@@ -6,7 +6,6 @@ import (
 	"mithrildb/db"
 	"mithrildb/model"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,22 +27,11 @@ func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			return
 		}
 
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default"
-		}
-
-		// Optional global expiration
-		expiration := int64(0)
-		if ttlStr := r.URL.Query().Get("expiration"); ttlStr != "" {
-			if ttlVal, err := strconv.ParseInt(ttlStr, 10, 64); err == nil && ttlVal >= 0 {
-				expiration = ttlVal
-			}
-		}
+		cf := getCfQueryParam(r)
 
 		// Write options
 		opts := database.DefaultWriteOptions
-		override := r.URL.Query().Has("sync") || r.URL.Query().Has("disable_wal") || r.URL.Query().Has("no_slowdown")
+		override := db.HasWriteOptions(r)
 		if override {
 			opts = db.BuildWriteOptions(r, defaults)
 			defer opts.Destroy()
@@ -61,10 +49,9 @@ func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 				Key:   key,
 				Value: entry.Value,
 				Meta: model.Metadata{
-					Rev:        uuid.NewString(),
-					Type:       entry.Type,
-					Expiration: expiration,
-					UpdatedAt:  now,
+					Rev:       uuid.NewString(),
+					Type:      entry.Type,
+					UpdatedAt: now,
 				},
 			}
 			docs[key] = doc

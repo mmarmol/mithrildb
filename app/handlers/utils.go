@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"mithrildb/model"
 	"net/http"
 )
 
@@ -36,4 +37,24 @@ func getQueryParam(r *http.Request, key string) (string, error) {
 		return "", fmt.Errorf("missing '%s' parameter", key)
 	}
 	return val, nil
+}
+
+func getCasQueryParam(r *http.Request) string {
+	return r.URL.Query().Get("cas")
+}
+
+func getCfQueryParam(r *http.Request) string {
+	cf := r.URL.Query().Get("cf")
+	if cf == "" {
+		cf = "default"
+	}
+	return cf
+}
+
+func getDocTypeQueryParam(r *http.Request) string {
+	docType := r.URL.Query().Get("type")
+	if docType == "" {
+		docType = model.DocTypeJSON
+	}
+	return docType
 }

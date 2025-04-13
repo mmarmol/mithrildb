@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"mithrildb/config"
 	"mithrildb/db"
-	"mithrildb/model"
 	"net/http"
 )
 
@@ -19,20 +18,8 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			return
 		}
 
-		// Optional: column family
-		cf := r.URL.Query().Get("cf")
-		if cf == "" {
-			cf = "default"
-		}
-
-		// Optional: type
-		docType := r.URL.Query().Get("type")
-		if docType == "" {
-			docType = model.DocTypeJSON
-		}
-
-		// Optional: expiration
-		expiration := int64(0)
+		cf := getCfQueryParam(r)
+		docType := getDocTypeQueryParam(r)
 
 		// Read JSON body
 		var body struct {
@@ -49,7 +36,7 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 
 		// Write options
 		opts := database.DefaultWriteOptions
-		override := r.URL.Query().Has("sync") || r.URL.Query().Has("disable_wal") || r.URL.Query().Has("no_slowdown")
+		override := db.HasWriteOptions(r)
 		if override {
 			opts = db.BuildWriteOptions(r, defaults)
 			defer opts.Destroy()
@@ -61,9 +48,9 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			Key:          key,
 			Value:        body.Value,
 			Type:         docType,
-			Expiration:   expiration,
 			WriteOptions: opts,
 		})
+
 		if err != nil {
 			if err == db.ErrInvalidColumnFamily {
 				respondWithErrInvalidColumnFamily(w, cf)
