@@ -97,10 +97,51 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		}
 	})
 
-	// Increment counter document
-	http.HandleFunc("/documents/increment", func(w http.ResponseWriter, r *http.Request) {
+	// Increment counter
+	http.HandleFunc("/documents/counters/delta", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			CounterIncrementHandler(database, cfg.WriteDefaults)(w, r)
+			DeltaCountertHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// List operations
+	http.HandleFunc("/documents/lists/push", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			ListPushHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/documents/lists/unshift", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			ListUnshiftHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/documents/lists/pop", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			ListPopHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/documents/lists/shift", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			ListShiftHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/documents/lists/range", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			ListRangeHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

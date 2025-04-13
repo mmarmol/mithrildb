@@ -181,14 +181,14 @@ echo "✅ Counter document created with value 10"
 
 echo
 echo "🔹 Increment counter by 5"
-INC_RESPONSE=$(curl -s -X POST "http://localhost:$PORT/documents/increment?cf=logs&key=mycounter" \
+INC_RESPONSE=$(curl -s -X POST "http://localhost:$PORT/documents/counters/delta?cf=logs&key=mycounter" \
   -H "Content-Type: application/json" -d '{"delta": 5}')
 echo "Response: $INC_RESPONSE"
 echo "$INC_RESPONSE" | grep -q '"new":15' && echo "✅ Counter incremented to 15" || (echo "❌ Counter increment failed"; exit 1)
 
 echo
 echo "🔹 Decrement counter by 2"
-DEC_RESPONSE=$(curl -s -X POST "http://localhost:$PORT/documents/increment?cf=logs&key=mycounter" \
+DEC_RESPONSE=$(curl -s -X POST "http://localhost:$PORT/documents/counters/delta?cf=logs&key=mycounter" \
   -H "Content-Type: application/json" -d '{"delta": -2}')
 echo "Response: $DEC_RESPONSE"
 echo "$DEC_RESPONSE" | grep -q '"new":13' && echo "✅ Counter decremented to 13" || (echo "❌ Counter decrement failed"; exit 1)
@@ -208,6 +208,46 @@ REPLACE_FAIL=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:
   -H "Content-Type: application/json" -d '{"value": "something"}')
 [ "$REPLACE_FAIL" = "404" ] && echo "✅ Replace correctly failed on missing key" || (echo "❌ Replace should have failed"; exit 1)
 
+
+# -----------------------------------
+# LIST
+# -----------------------------------
+echo
+echo "🔹 Test List Operations"
+
+# Limpieza por si ya existía
+curl -s -X POST "http://localhost:$PORT/documents?cf=logs&key=mylist&type=list" \
+     -H "Content-Type: application/json" -d '{"value": []}' >/dev/null
+
+echo "➡️ Push values to the list"
+for val in "a" "b" "c"; do
+	curl -s -X POST "http://localhost:$PORT/documents/lists/push?cf=logs&key=mylist" \
+	     -H "Content-Type: application/json" -d "{\"element\": \"$val\"}" >/dev/null
+done
+
+echo "➡️ Unshift value to the list"
+curl -s -X POST "http://localhost:$PORT/documents/lists/unshift?cf=logs&key=mylist" \
+     -H "Content-Type: application/json" -d '{"element": "x"}' >/dev/null
+
+echo "➡️ List range (0 to end)"
+RANGE=$(curl -s "http://localhost:$PORT/documents/lists/range?cf=logs&key=mylist&start=0&end=-1")
+echo "List after push/unshift: $RANGE"
+echo "$RANGE" | grep -q '"x"' && echo "✅ 'x' is at start" || echo "❌ 'x' missing"
+echo "$RANGE" | grep -q '"c"' && echo "✅ 'c' is at end" || echo "❌ 'c' missing"
+
+echo "➡️ Shift value"
+SHIFTED=$(curl -s -X POST "http://localhost:$PORT/documents/lists/shift?cf=logs&key=mylist")
+echo "Shifted value: $SHIFTED"
+echo "$SHIFTED" | grep -q '"value":"x"' && echo "✅ Shifted out 'x'" || echo "❌ Unexpected shift result"
+
+echo "➡️ Pop value"
+POPPED=$(curl -s -X POST "http://localhost:$PORT/documents/lists/pop?cf=logs&key=mylist")
+echo "Popped value: $POPPED"
+echo "$POPPED" | grep -q '"value":"c"' && echo "✅ Popped 'c'" || echo "❌ Unexpected pop result"
+
+# Verificar estado final de la lista
+FINAL=$(curl -s "http://localhost:$PORT/documents/lists/range?cf=logs&key=mylist&start=0&end=-1")
+echo "Final list: $FINAL"
 
 echo
 echo "✅ All tests completed successfully."

@@ -7,21 +7,21 @@ import (
 	"net/http"
 )
 
-// PutHandler stores a document using the new document model with metadata and optional CAS.
-func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+// ReplaceHandler handles POST /replace?key=...&cf=...&type=...
+// The document is only inserted if it doesn't already exist.
+func ReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Required: key in query
+		// Required: key
 		key, err := getQueryParam(r, "key")
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
 		cf := getCfQueryParam(r)
 		docType := getDocTypeQueryParam(r)
 		cas := getCasQueryParam(r)
 
-		// Parse the body (value can be any valid JSON type)
+		// Read JSON body
 		var body struct {
 			Value interface{} `json:"value"`
 		}
@@ -42,32 +42,21 @@ func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Handle
 			defer opts.Destroy()
 		}
 
-		// Build put options
-		putOpts := db.PutOptions{
+		// Attempt insert
+		doc, err := database.Replace(db.PutOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Value:        body.Value,
 			Cas:          cas,
 			Type:         docType,
 			WriteOptions: opts,
-		}
-
-		// Execute put
-		doc, err := database.PutWithOptions(putOpts)
+		})
 		if err != nil {
-			if err == db.ErrInvalidColumnFamily {
-				respondWithErrInvalidColumnFamily(w, cf)
-				return
-			}
-			if err == db.ErrRevisionMismatch {
-				respondWithError(w, http.StatusPreconditionFailed, err.Error())
-				return
-			}
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			mapAndRespondWithError(w, err)
 			return
 		}
 
-		// Respond with document
+		// Success
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(doc)
 	}

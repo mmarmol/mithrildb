@@ -3,7 +3,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"mithrildb/db"
 	"net/http"
 	"strings"
@@ -30,11 +29,7 @@ func CreateFamilyHandler(database *db.DB) http.HandlerFunc {
 
 		err := database.CreateFamily(name)
 		if err != nil {
-			if err == db.ErrFamilyExists {
-				respondWithError(w, http.StatusConflict, fmt.Sprintf("column family '%s' already exists", name))
-				return
-			}
-			respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("failed to create column family: %v", err))
+			mapAndRespondWithError(w, err)
 			return
 		}
 

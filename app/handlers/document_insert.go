@@ -52,15 +52,7 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 		})
 
 		if err != nil {
-			if err == db.ErrInvalidColumnFamily {
-				respondWithErrInvalidColumnFamily(w, cf)
-				return
-			}
-			if err == db.ErrKeyAlreadyExists {
-				respondWithError(w, http.StatusConflict, "key already exists")
-				return
-			}
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			mapAndRespondWithError(w, err)
 			return
 		}
 

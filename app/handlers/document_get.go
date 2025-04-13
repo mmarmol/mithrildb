@@ -21,11 +21,7 @@ func GetHandler(database *db.DB, defaults config.ReadOptionsConfig, key string) 
 
 		doc, err := database.Get(cf, key, opts)
 		if err != nil {
-			if err == db.ErrInvalidColumnFamily {
-				respondWithErrInvalidColumnFamily(w, cf)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			mapAndRespondWithError(w, err)
 			return
 		}
 		if doc == nil {

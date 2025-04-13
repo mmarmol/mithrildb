@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"mithrildb/config"
 	"mithrildb/db"
-	"mithrildb/model"
 	"net/http"
 )
 
@@ -17,8 +16,8 @@ type incrementResponse struct {
 	New int64 `json:"new"`
 }
 
-// CounterIncrementHandler handles POST /counters/increment
-func CounterIncrementHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+// CounterIncrementHandler handles POST /counters/delta
+func DeltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get required 'key' query param
 		key, err := getQueryParam(r, "key")
@@ -48,18 +47,9 @@ func CounterIncrementHandler(database *db.DB, defaults config.WriteOptionsConfig
 			defer opts.Destroy()
 		}
 
-		oldVal, newVal, err := database.IncrementCounter(cf, key, req.Delta, opts)
+		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, opts)
 		if err != nil {
-			switch err {
-			case db.ErrInvalidColumnFamily:
-				respondWithErrInvalidColumnFamily(w, cf)
-			case model.ErrInvalidCounterValue:
-				respondWithError(w, http.StatusBadRequest, "document is not a valid counter")
-			case model.ErrInvalidCounterType:
-				respondWithError(w, http.StatusBadRequest, "document is not a valid counter type")
-			default:
-				respondWithError(w, http.StatusInternalServerError, err.Error())
-			}
+			mapAndRespondWithError(w, err)
 			return
 		}
 

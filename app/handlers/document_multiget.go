@@ -39,11 +39,7 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 		// Perform the multi-get operation and return document objects (not just values)
 		result, err := database.MultiGet(cf, req.Keys, opts)
 		if err != nil {
-			if err == db.ErrInvalidColumnFamily {
-				respondWithErrInvalidColumnFamily(w, cf)
-				return
-			}
-			respondWithError(w, http.StatusInternalServerError, "error reading from database: "+err.Error())
+			mapAndRespondWithError(w, err)
 			return
 		}
 

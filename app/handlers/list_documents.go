@@ -35,18 +35,14 @@ func ListDocumentsHandler(database *db.DB, defaults config.ReadOptionsConfig) ht
 		// First list keys
 		keys, err := database.ListKeys(cf, prefix, startAfter, limit, opts)
 		if err != nil {
-			if err == db.ErrInvalidColumnFamily {
-				respondWithErrInvalidColumnFamily(w, cf)
-				return
-			}
-			respondWithError(w, http.StatusInternalServerError, "failed to list keys: "+err.Error())
+			mapAndRespondWithError(w, err)
 			return
 		}
 
 		// Then fetch documents for those keys
 		docs, err := database.MultiGet(cf, keys, opts)
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "failed to retrieve documents: "+err.Error())
+			mapAndRespondWithError(w, err)
 			return
 		}
 

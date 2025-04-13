@@ -59,11 +59,7 @@ func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 		}
 
 		if err := database.MultiPut(cf, batch, opts); err != nil {
-			if err == db.ErrInvalidColumnFamily {
-				respondWithErrInvalidColumnFamily(w, cf)
-				return
-			}
-			respondWithError(w, http.StatusInternalServerError, "multi put failed: "+err.Error())
+			mapAndRespondWithError(w, err)
 			return
 		}
 

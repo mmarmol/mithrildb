@@ -12,7 +12,7 @@ import (
 )
 
 // IncrementCounter increments a counter document atomically and returns the old and new values.
-func (db *DB) IncrementCounter(cf, key string, delta int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
+func (db *DB) DeltaCounter(cf, key string, delta int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return 0, 0, ErrInvalidColumnFamily
