@@ -11,8 +11,8 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// Insert stores a Document only if the key doesn't exist (atomic using transaction).
-func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
+// Replace stores a Document only if the key already exists (atomic using transaction).
+func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
@@ -30,22 +30,18 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 		return nil, fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
 	}
 
-	// Create default transaction options with snapshot
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()
 
-	// Start transaction
 	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
-	// Set snapshot and read options
 	readOpts := grocksdb.NewDefaultReadOptions()
 	readOpts.SetSnapshot(txn.GetSnapshot())
 	readOpts.SetFillCache(false)
 	defer readOpts.Destroy()
 
-	// Read inside the transaction
 	val, err := txn.GetWithCF(readOpts, handle, []byte(opts.Key))
 	if err != nil {
 		txn.Rollback()
@@ -53,12 +49,11 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 	}
 	defer val.Free()
 
-	if val.Exists() {
+	if !val.Exists() {
 		txn.Rollback()
-		return nil, ErrKeyAlreadyExists
+		return nil, ErrKeyNotFound
 	}
 
-	// Build new document
 	now := time.Now()
 	doc := model.Document{
 		Key:   opts.Key,
@@ -77,13 +72,11 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 		return nil, fmt.Errorf("failed to serialize document: %w", err)
 	}
 
-	// Put the new document
 	if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
 		txn.Rollback()
-		return nil, fmt.Errorf("failed to insert document: %w", err)
+		return nil, fmt.Errorf("failed to replace document: %w", err)
 	}
 
-	// Commit the transaction
 	if err := txn.Commit(); err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)

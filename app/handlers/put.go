@@ -2,20 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"mithrildb/config"
 	"mithrildb/db"
 	"mithrildb/model"
 	"net/http"
 )
-
-func getQueryParam(r *http.Request, key string) (string, error) {
-	val := r.URL.Query().Get(key)
-	if val == "" {
-		return "", fmt.Errorf("missing '%s' parameter", key)
-	}
-	return val, nil
-}
 
 // PutHandler stores a document using the new document model with metadata and optional CAS.
 func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
@@ -23,7 +14,7 @@ func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Handle
 		// Required: key in query
 		key, err := getQueryParam(r, "key")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -48,11 +39,11 @@ func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Handle
 			Value interface{} `json:"value"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			respondWithErrInvalidJSONBody(w)
 			return
 		}
 		if body.Value == nil {
-			http.Error(w, "missing or null 'value' in body", http.StatusBadRequest)
+			respondWithErrMissingValue(w)
 			return
 		}
 
@@ -78,15 +69,15 @@ func PutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Handle
 		// Execute put
 		doc, err := database.PutWithOptions(putOpts)
 		if err != nil {
-			if err == db.ErrRevisionMismatch {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusPreconditionFailed)
-				json.NewEncoder(w).Encode(map[string]string{
-					"error": err.Error(),
-				})
+			if err == db.ErrInvalidColumnFamily {
+				respondWithErrInvalidColumnFamily(w, cf)
 				return
 			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			if err == db.ErrRevisionMismatch {
+				respondWithError(w, http.StatusPreconditionFailed, err.Error())
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 

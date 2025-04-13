@@ -39,11 +39,11 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			Value interface{} `json:"value"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			respondWithErrInvalidJSONBody(w)
 			return
 		}
 		if body.Value == nil {
-			http.Error(w, "missing 'value' in body", http.StatusBadRequest)
+			respondWithErrMissingValue(w)
 			return
 		}
 
@@ -65,11 +65,15 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			WriteOptions: opts,
 		})
 		if err != nil {
-			if err == db.ErrKeyAlreadyExists {
-				http.Error(w, "key already exists", http.StatusConflict)
+			if err == db.ErrInvalidColumnFamily {
+				respondWithErrInvalidColumnFamily(w, cf)
 				return
 			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			if err == db.ErrKeyAlreadyExists {
+				respondWithError(w, http.StatusConflict, "key already exists")
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 

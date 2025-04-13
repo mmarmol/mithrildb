@@ -23,7 +23,11 @@ func DeleteHandler(database *db.DB, defaults config.WriteOptionsConfig, key stri
 
 		// Call Delete with the specified column family
 		if err := database.DeleteDirect(cf, key, opts); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			if err == db.ErrInvalidColumnFamily {
+				respondWithErrInvalidColumnFamily(w, cf)
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		w.WriteHeader(http.StatusOK)

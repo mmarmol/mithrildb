@@ -19,11 +19,11 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req multiGetRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			respondWithErrInvalidJSONBody(w)
 			return
 		}
 		if len(req.Keys) == 0 {
-			http.Error(w, "empty key list", http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, "empty key list")
 			return
 		}
 
@@ -42,7 +42,11 @@ func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 		// Perform the multi-get operation and return document objects (not just values)
 		result, err := database.MultiGet(cf, req.Keys, opts)
 		if err != nil {
-			http.Error(w, "error reading from database: "+err.Error(), http.StatusInternalServerError)
+			if err == db.ErrInvalidColumnFamily {
+				respondWithErrInvalidColumnFamily(w, cf)
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, "error reading from database: "+err.Error())
 			return
 		}
 

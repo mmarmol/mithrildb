@@ -13,7 +13,7 @@ import (
 func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (map[string]*model.Document, error) {
 	handle, ok := db.Families[cf]
 	if !ok {
-		return nil, fmt.Errorf("column family '%s' does not exist", cf)
+		return nil, ErrInvalidColumnFamily
 	}
 
 	if len(keys) == 0 {

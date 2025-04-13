@@ -1,13 +1,10 @@
 package db
 
 import (
-	"errors"
 	"sort"
 
 	"github.com/linxGnu/grocksdb"
 )
-
-var ErrFamilyExists = errors.New("column family already exists")
 
 // ListFamilyNames returns the list of column family names currently loaded in memory.
 func (db *DB) ListFamilyNames() []string {

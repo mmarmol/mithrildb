@@ -1,15 +1,13 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/linxGnu/grocksdb"
 )
 
 func (db *DB) ListKeys(cf string, prefix string, startAfter string, limit int, opts *grocksdb.ReadOptions) ([]string, error) {
 	handle, ok := db.Families[cf]
 	if !ok {
-		return nil, fmt.Errorf("column family '%s' does not exist", cf)
+		return nil, ErrInvalidColumnFamily
 	}
 
 	var keys []string

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"mithrildb/config"
 	"mithrildb/db"
 	"mithrildb/model"
@@ -21,11 +20,11 @@ func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			Type  string      `json:"type"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			respondWithErrInvalidJSONBody(w)
 			return
 		}
 		if len(payload) == 0 {
-			http.Error(w, "empty payload", http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, "empty payload")
 			return
 		}
 
@@ -58,11 +57,6 @@ func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			if entry.Type == "" {
 				entry.Type = model.DocTypeJSON
 			}
-			if err := model.ValidateValue(entry.Value, entry.Type); err != nil {
-				http.Error(w, fmt.Sprintf("invalid value for key '%s': %v", key, err), http.StatusBadRequest)
-				return
-			}
-
 			doc := &model.Document{
 				Key:   key,
 				Value: entry.Value,
@@ -78,7 +72,11 @@ func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 		}
 
 		if err := database.MultiPut(cf, batch, opts); err != nil {
-			http.Error(w, "multi put failed: "+err.Error(), http.StatusInternalServerError)
+			if err == db.ErrInvalidColumnFamily {
+				respondWithErrInvalidColumnFamily(w, cf)
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, "multi put failed: "+err.Error())
 			return
 		}
 

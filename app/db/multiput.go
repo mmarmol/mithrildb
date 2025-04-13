@@ -14,7 +14,7 @@ import (
 func (db *DB) MultiPut(cf string, pairs map[string]interface{}, opts *grocksdb.WriteOptions) error {
 	handle, ok := db.Families[cf]
 	if !ok {
-		return fmt.Errorf("column family '%s' does not exist", cf)
+		return ErrInvalidColumnFamily
 	}
 
 	batch := grocksdb.NewWriteBatch()

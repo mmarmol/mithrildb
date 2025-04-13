@@ -13,7 +13,7 @@ func MetricsHandler(database *db.DB, cfg config.AppConfig, startTime time.Time) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		server, err := metrics.GetServerMetrics(cfg, startTime)
 		if err != nil {
-			http.Error(w, "error reading system metrics: "+err.Error(), http.StatusInternalServerError)
+			respondWithError(w, http.StatusInternalServerError, "error reading system metrics: "+err.Error())
 			return
 		}
 

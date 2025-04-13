@@ -26,7 +26,7 @@ func ConfigUpdateHandler(cfg *config.AppConfig, dbInstance *db.DB, configPath st
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req configUpdateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			respondWithErrInvalidJSONBody(w)
 			return
 		}
 
@@ -36,7 +36,7 @@ func ConfigUpdateHandler(cfg *config.AppConfig, dbInstance *db.DB, configPath st
 
 		iniFile, err := ini.Load(configPath)
 		if err != nil {
-			http.Error(w, "Could not read config file", http.StatusInternalServerError)
+			respondWithError(w, http.StatusInternalServerError, "Could not read config file")
 			return
 		}
 

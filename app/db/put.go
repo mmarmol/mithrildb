@@ -2,7 +2,6 @@ package db
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/linxGnu/grocksdb"
 )
-
-var ErrRevisionMismatch = errors.New("revision mismatch")
 
 // PutOptions defines configurable parameters for a document insert or update.
 type PutOptions struct {
@@ -29,15 +26,15 @@ type PutOptions struct {
 func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
-		return nil, fmt.Errorf("column family '%s' does not exist", opts.ColumnFamily)
+		return nil, ErrInvalidColumnFamily
 	}
 
 	if opts.Key == "" {
-		return nil, errors.New("key cannot be empty")
+		return nil, ErrEmptyKey
 	}
 
 	if opts.Value == nil {
-		return nil, errors.New("value cannot be nil")
+		return nil, ErrNilValue
 	}
 
 	if err := model.ValidateValue(opts.Value, opts.Type); err != nil {

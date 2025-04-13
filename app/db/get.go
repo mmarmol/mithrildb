@@ -13,7 +13,7 @@ import (
 func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (*model.Document, error) {
 	handle, ok := db.Families[cf]
 	if !ok {
-		return nil, fmt.Errorf("column family '%s' does not exist", cf)
+		return nil, ErrInvalidColumnFamily
 	}
 
 	value, err := db.TransactionDB.GetCF(opts, handle, []byte(key))

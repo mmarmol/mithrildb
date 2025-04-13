@@ -38,7 +38,11 @@ func ListKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 
 		keys, err := database.ListKeys(cf, prefix, startAfter, limit, opts)
 		if err != nil {
-			http.Error(w, "failed to list keys: "+err.Error(), http.StatusInternalServerError)
+			if err == db.ErrInvalidColumnFamily {
+				respondWithErrInvalidColumnFamily(w, cf)
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, "failed to list keys: "+err.Error())
 			return
 		}
 
