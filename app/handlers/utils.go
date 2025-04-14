@@ -14,6 +14,10 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+func respondWithNotAllowed(w http.ResponseWriter) {
+	respondWithError(w, http.StatusMethodNotAllowed, "method not allowed")
+}
+
 // respondWithError sends a JSON error response with the given status and message.
 func respondWithError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")

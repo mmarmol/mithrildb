@@ -27,7 +27,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		case http.MethodPost:
 			CreateFamilyHandler(database)(w, r)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -42,7 +42,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		case http.MethodPost:
 			PutHandler(database, cfg.WriteDefaults)(w, r)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -51,7 +51,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			MultiPutHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -59,7 +59,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			MultiGetHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -77,7 +77,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		case http.MethodDelete:
 			DeleteHandler(database, cfg.WriteDefaults, key)(w, r)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -85,7 +85,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			InsertHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -93,7 +93,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			ReplaceHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -102,7 +102,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			DeltaCountertHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -111,7 +111,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			ListPushHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -119,7 +119,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			ListUnshiftHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -127,7 +127,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			ListPopHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -135,7 +135,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			ListShiftHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -143,7 +143,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodGet {
 			ListRangeHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -151,7 +151,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			SetAddHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -159,7 +159,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodPost {
 			SetRemoveHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 
@@ -167,7 +167,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 		if r.Method == http.MethodGet {
 			SetContainsHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			respondWithNotAllowed(w)
 		}
 	})
 }
