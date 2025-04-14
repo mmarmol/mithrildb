@@ -249,5 +249,36 @@ echo "$POPPED" | grep -q '"element":"c"' && echo "✅ Popped 'c'" || echo "❌ U
 FINAL=$(curl -s "http://localhost:$PORT/documents/lists/range?cf=logs&key=mylist&start=0&end=-1")
 echo "Final list: $FINAL"
 
+# -----------------------------------
+# SET
+# -----------------------------------
+echo
+echo "🔹 Test Set Operations"
+
+# Crear documento tipo set vacío (por si ya existía)
+curl -s -X POST "http://localhost:$PORT/documents?cf=logs&key=myset&type=set" \
+     -H "Content-Type: application/json" -d '{"value": []}' >/dev/null
+
+echo "➡️ Add values to set"
+for val in "red" "green" "blue"; do
+    curl -s -X POST "http://localhost:$PORT/documents/sets/add?cf=logs&key=myset" \
+         -H "Content-Type: application/json" -d "{\"element\": \"$val\"}" >/dev/null
+done
+
+echo "➡️ Check 'green' in set"
+RESP=$(curl -s "http://localhost:$PORT/documents/sets/contains?cf=logs&key=myset&element=green")
+echo "Contains green? $RESP"
+echo "$RESP" | grep -q '"contains":true' && echo "✅ 'green' found" || echo "❌ 'green' missing"
+
+echo "➡️ Remove 'green' from set"
+curl -s -X POST "http://localhost:$PORT/documents/sets/remove?cf=logs&key=myset" \
+     -H "Content-Type: application/json" -d '{"element": "green"}' >/dev/null
+
+echo "➡️ Check 'green' again"
+RESP=$(curl -s "http://localhost:$PORT/documents/sets/contains?cf=logs&key=myset&element=green")
+echo "Contains green? $RESP"
+echo "$RESP" | grep -q '"contains":false' && echo "✅ 'green' removed" || echo "❌ 'green' still present"
+
+
 echo
 echo "✅ All tests completed successfully."

@@ -146,4 +146,28 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+
+	http.HandleFunc("/documents/sets/add", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			SetAddHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/documents/sets/remove", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			SetRemoveHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/documents/sets/contains", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			SetContainsHandler(database, cfg.ReadDefaults)(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 }
