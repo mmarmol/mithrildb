@@ -1,8 +1,196 @@
 definitions:
+  config.AppConfig:
+    description: Global server and database configuration.
+    properties:
+      read_defaults:
+        $ref: '#/definitions/config.ReadOptionsConfig'
+      rocksdb:
+        $ref: '#/definitions/config.RocksDBConfig'
+      server:
+        $ref: '#/definitions/config.ServerConfig'
+      write_defaults:
+        $ref: '#/definitions/config.WriteOptionsConfig'
+    type: object
+  config.ReadOptionsConfig:
+    description: Controls how data is read from the database.
+    properties:
+      fill_cache:
+        description: Whether to fill cache on reads
+        type: boolean
+      read_tier:
+        description: 'Read level: all or cache-only'
+        type: string
+    type: object
+  config.RocksDBConfig:
+    description: Detailed configuration for the RocksDB storage backend.
+    properties:
+      block_cache_size:
+        description: Size of the block cache in bytes
+        type: integer
+      compression_type:
+        description: 'Compression type: snappy, zstd, lz4, none'
+        type: string
+      create_if_missing:
+        description: Whether to create the DB if it doesn't exist
+        type: boolean
+      db_path:
+        description: Path to the data directory
+        type: string
+      enable_compression:
+        description: Whether compression is enabled
+        type: boolean
+      max_open_files:
+        description: Maximum number of open files
+        type: integer
+      max_write_buffer_num:
+        description: Maximum number of write buffers
+        type: integer
+      stats_dump_period:
+        description: Frequency for dumping RocksDB statistics (e.g. "30s", "1m")
+        type: string
+      write_buffer_size:
+        description: Size of the write buffer in bytes
+        type: integer
+    type: object
+  config.ServerConfig:
+    description: Listening port configuration for the REST API.
+    properties:
+      port:
+        description: Port where the HTTP server listens
+        type: integer
+    type: object
+  config.UpdateResult:
+    description: Outcome when applying changes to the configuration file.
+    properties:
+      applied:
+        description: Parameters applied immediately
+        items:
+          type: string
+        type: array
+      rejected:
+        additionalProperties:
+          type: string
+        description: Parameters rejected with reasons
+        type: object
+      requires_restart:
+        description: Parameters that require a restart
+        items:
+          type: string
+        type: array
+    type: object
+  config.WriteOptionsConfig:
+    description: Controls the write behavior in RocksDB.
+    properties:
+      disable_wal:
+        description: Disable the Write-Ahead Log
+        type: boolean
+      no_slowdown:
+        description: Avoid blocking if RocksDB is busy
+        type: boolean
+      sync:
+        description: Wait for disk sync on write
+        type: boolean
+    type: object
+  handlers.BulkPutRequestEntry:
+    properties:
+      type:
+        description: |-
+          Optional document type (e.g., "json", "counter", "list", "set").
+          If omitted, "json" is assumed.
+        type: string
+      value:
+        description: |-
+          The value to store for the document.
+          Can be a string, number, object, array, etc.
+    type: object
   handlers.ErrorResponse:
     properties:
       error:
         type: string
+    type: object
+  handlers.MultiGetResponse:
+    additionalProperties:
+      $ref: '#/definitions/model.Document'
+    description: Map of keys to documents or null for missing entries.
+    type: object
+  handlers.SetElementRequest:
+    description: Request body containing the element to operate with.
+    properties:
+      element: {}
+    type: object
+  handlers.createFamilyRequest:
+    properties:
+      name:
+        example: logs
+        type: string
+    type: object
+  handlers.incrementRequest:
+    properties:
+      delta:
+        description: The amount to increment (positive) or decrement (negative) the
+          counter.
+        type: integer
+    type: object
+  handlers.incrementResponse:
+    properties:
+      new:
+        description: New value
+        type: integer
+      old:
+        description: Previous value
+        type: integer
+    type: object
+  handlers.listElementRequest:
+    properties:
+      element:
+        description: Element to add to the list (can be string, number, object, etc.)
+    type: object
+  handlers.multiGetRequest:
+    properties:
+      keys:
+        items:
+          type: string
+        type: array
+    type: object
+  metrics.DiskInfo:
+    properties:
+      free_bytes:
+        type: integer
+      path:
+        type: string
+      total_bytes:
+        type: integer
+      used_bytes:
+        type: integer
+    type: object
+  metrics.FullMetrics:
+    properties:
+      rocksdb:
+        additionalProperties: {}
+        type: object
+      server:
+        $ref: '#/definitions/metrics.ServerMetrics'
+    type: object
+  metrics.ServerMetrics:
+    properties:
+      arch:
+        type: string
+      db_disk:
+        $ref: '#/definitions/metrics.DiskInfo'
+      go_version:
+        type: string
+      hostname:
+        type: string
+      mount_disk:
+        $ref: '#/definitions/metrics.DiskInfo'
+      os:
+        type: string
+      pid:
+        type: integer
+      port:
+        type: integer
+      uptime_seconds:
+        type: integer
     type: object
   model.Document:
     properties:
@@ -37,6 +225,302 @@ definitions:
 info:
   contact: {}
 paths:
+  /config:
+    get:
+      consumes:
+      - application/json
+      description: Returns the current server configuration used by the database
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.AppConfig'
+      summary: Get server configuration
+      tags:
+      - config
+  /config/update:
+    put:
+      consumes:
+      - application/json
+      description: Updates system configuration parameters. Some changes are applied
+        live, while others require a restart.
+      parameters:
+      - description: Configuration parameters to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.UpdateResult'
+        "400":
+          description: Invalid JSON body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Update configuration
+      tags:
+      - config
+  /documents:
+    delete:
+      description: Deletes a document by key within a specified column family.
+      parameters:
+      - description: Document key to delete
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document successfully deleted
+        "400":
+          description: Missing or invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document or column family not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete a document
+      tags:
+      - documents
+    get:
+      description: Retrieves a document by key, including its value and metadata.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Optional RocksDB fill cache read option
+        in: query
+        name: fill_cache
+        type: boolean
+      - description: Optional RocksDB read tier (e.g. 'all', 'cache-only')
+        in: query
+        name: read_tier
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Document'
+        "400":
+          description: Missing or invalid key
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Retrieve a document
+      tags:
+      - documents
+    post:
+      consumes:
+      - application/json
+      description: Stores a document in the specified column family. Supports optimistic
+        concurrency via CAS.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Document type (e.g. 'json', 'counter', 'list')
+        in: query
+        name: type
+        type: string
+      - description: CAS (revision) for concurrency control
+        in: query
+        name: cas
+        type: string
+      - description: Document value (JSON-encoded)
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Document'
+        "400":
+          description: Invalid input or missing value
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Column family not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: CAS mismatch
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Store or update a document
+      tags:
+      - documents
+  /documents/bulk/get:
+    post:
+      consumes:
+      - application/json
+      description: Retrieves multiple documents with metadata by key. Missing keys
+        will be returned with null values.
+      parameters:
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: List of keys to retrieve
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.multiGetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MultiGetResponse'
+        "400":
+          description: Invalid JSON or missing key list
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Bulk document fetch
+      tags:
+      - documents
+  /documents/bulk/put:
+    post:
+      consumes:
+      - application/json
+      description: Stores multiple documents in a single call. Each document is defined
+        by a key and a value/type pair.
+      parameters:
+      - description: Column family (defaults to 'default')
+        in: query
+        name: cf
+        type: string
+      - description: Map of key to value/type entry
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            $ref: '#/definitions/handlers.BulkPutRequestEntry'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/model.Document'
+            type: object
+        "400":
+          description: Invalid input or empty payload
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Bulk insert documents
+      tags:
+      - documents
+  /documents/counters/delta:
+    post:
+      consumes:
+      - application/json
+      description: Increments or decrements a counter document by a given integer
+        value.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Delta value for increment or decrement
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.incrementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.incrementResponse'
+        "400":
+          description: Invalid parameters or JSON body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Modify counter
+      tags:
+      - counters
   /documents/insert:
     post:
       consumes:
@@ -97,4 +581,630 @@ paths:
       summary: Insert a document
       tags:
       - documents
+  /documents/keys:
+    get:
+      description: Returns a list of keys within the specified column family, optionally
+        filtered by prefix and pagination options.
+      parameters:
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Only return keys with this prefix
+        in: query
+        name: prefix
+        type: string
+      - description: Return keys after this key (for pagination)
+        in: query
+        name: start_after
+        type: string
+      - description: 'Maximum number of keys to return (default: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Whether to fill RocksDB read cache
+        in: query
+        name: fill_cache
+        type: boolean
+      - description: RocksDB read tier (e.g. 'all', 'cache-only')
+        in: query
+        name: read_tier
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List document keys
+      tags:
+      - keys
+  /documents/list:
+    get:
+      description: Returns a map of documents filtered by optional prefix and paginated
+        using start_after and limit.
+      parameters:
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Filter documents whose keys begin with this prefix
+        in: query
+        name: prefix
+        type: string
+      - description: Skip documents until this key (exclusive)
+        in: query
+        name: start_after
+        type: string
+      - description: 'Maximum number of documents to return (default: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Whether to fill RocksDB read cache
+        in: query
+        name: fill_cache
+        type: boolean
+      - description: RocksDB read tier (e.g., 'all', 'cache-only')
+        in: query
+        name: read_tier
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/model.Document'
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List documents
+      tags:
+      - documents
+  /documents/lists/pop:
+    post:
+      consumes:
+      - application/json
+      description: Removes and returns the last element of a list-type document.
+      parameters:
+      - description: Key of the list document
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: 'Write option: sync write to disk'
+        in: query
+        name: sync
+        type: boolean
+      - description: 'Write option: disable write-ahead log'
+        in: query
+        name: disable_wal
+        type: boolean
+      - description: 'Write option: disable slowdown on write buffer full'
+        in: query
+        name: no_slowdown
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns the popped element
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or missing key
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Pop element from list
+      tags:
+      - lists
+  /documents/lists/push:
+    post:
+      consumes:
+      - application/json
+      description: Adds an element to the end of an existing list-type document.
+      parameters:
+      - description: Key of the list document
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Element to add
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.listElementRequest'
+      - description: 'Write option: sync write to disk'
+        in: query
+        name: sync
+        type: boolean
+      - description: 'Write option: disable write-ahead log'
+        in: query
+        name: disable_wal
+        type: boolean
+      - description: 'Write option: disable slowdown on write buffer full'
+        in: query
+        name: no_slowdown
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request or JSON body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Push element to list
+      tags:
+      - lists
+  /documents/lists/range:
+    get:
+      consumes:
+      - application/json
+      description: Returns a slice of elements from a list document, based on start
+        and end indices.
+      parameters:
+      - description: Key of the list document
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Start index (inclusive, 0-based)
+        in: query
+        name: start
+        required: true
+        type: integer
+      - description: End index (inclusive, -1 for end of list)
+        in: query
+        name: end
+        required: true
+        type: integer
+      - description: 'Read option: whether to fill RocksDB cache'
+        in: query
+        name: fill_cache
+        type: boolean
+      - description: 'Read option: ''all'' or ''cache-only'''
+        in: query
+        name: read_tier
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List content
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get elements from a list
+      tags:
+      - lists
+  /documents/lists/shift:
+    post:
+      consumes:
+      - application/json
+      description: Removes and returns the first element of a list. Returns an error
+        if the list is empty.
+      parameters:
+      - description: Key of the list document
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: 'Write option: wait for sync'
+        in: query
+        name: sync
+        type: boolean
+      - description: 'Write option: disable WAL'
+        in: query
+        name: disable_wal
+        type: boolean
+      - description: 'Write option: disable slowdown retries'
+        in: query
+        name: no_slowdown
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Removed element from the list
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found or list is empty
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Shift list (remove first element)
+      tags:
+      - lists
+  /documents/lists/unshift:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new element to the beginning of a list document. The element
+        can be of any JSON-compatible type.
+      parameters:
+      - description: Key of the list document
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Element to insert at the beginning
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.listElementRequest'
+      - description: 'Write option: wait for sync'
+        in: query
+        name: sync
+        type: boolean
+      - description: 'Write option: disable WAL'
+        in: query
+        name: disable_wal
+        type: boolean
+      - description: 'Write option: disable slowdown retries'
+        in: query
+        name: no_slowdown
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Insertion successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input or JSON body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Unshift list (add to start)
+      tags:
+      - lists
+  /documents/replace:
+    post:
+      consumes:
+      - application/json
+      description: Replaces a document if it already exists. Fails if the key does
+        not exist. Supports CAS for concurrency control.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Document type (e.g. 'json', 'counter', 'list')
+        in: query
+        name: type
+        type: string
+      - description: CAS (revision) for concurrency control
+        in: query
+        name: cas
+        type: string
+      - description: New value for the document
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Document'
+        "400":
+          description: Invalid request or missing value
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Key not found or column family missing
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: CAS mismatch
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Replace an existing document
+      tags:
+      - documents
+  /documents/sets/add:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new element to a document of type "set". If the element
+        already exists, it will not be duplicated.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Element to add to the set
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SetElementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Operation successful
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid parameters or body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Add element to set
+      tags:
+      - sets
+  /documents/sets/contains:
+    get:
+      consumes:
+      - application/json
+      description: Checks whether a given element exists within a set-type document.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Element to check
+        in: query
+        name: element
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status and whether the element exists
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Missing or invalid parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Check if element exists in set
+      tags:
+      - sets
+  /documents/sets/remove:
+    post:
+      consumes:
+      - application/json
+      description: Removes a specific element from a set-type document.
+      parameters:
+      - description: Document key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Column family (default: ''default'')'
+        in: query
+        name: cf
+        type: string
+      - description: Element to remove from the set
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request or missing parameters
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Remove element from set
+      tags:
+      - sets
+  /families:
+    get:
+      description: Retrieves the names of all available column families.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List column families
+      tags:
+      - families
+    post:
+      consumes:
+      - application/json
+      description: Creates a new column family with the specified name.
+      parameters:
+      - description: Name of the column family to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createFamilyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created column family name
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid or missing column family name
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Column family already exists
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create column family
+      tags:
+      - families
+  /metrics:
+    get:
+      description: Returns server-level and RocksDB-specific metrics, including memory
+        usage, uptime, and database statistics.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/metrics.FullMetrics'
+        "500":
+          description: Failed to collect metrics
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Retrieve metrics
+      tags:
+      - monitoring
 swagger: "2.0"

@@ -7,6 +7,23 @@ import (
 	"net/http"
 )
 
+// listPopHandler removes and returns the last element from a list document.
+//
+// @Summary      Pop element from list
+// @Description  Removes and returns the last element of a list-type document.
+// @Tags         lists
+// @Accept       json
+// @Produce      json
+// @Param        key  query     string  true  "Key of the list document"
+// @Param        cf   query     string  false "Column family (default: 'default')"
+// @Param        sync          query  boolean false "Write option: sync write to disk"
+// @Param        disable_wal   query  boolean false "Write option: disable write-ahead log"
+// @Param        no_slowdown   query  boolean false "Write option: disable slowdown on write buffer full"
+// @Success      200  {object}  map[string]interface{}  "Returns the popped element"
+// @Failure      400  {object}  handlers.ErrorResponse  "Invalid request or missing key"
+// @Failure      404  {object}  handlers.ErrorResponse  "Document not found"
+// @Failure      500  {object}  handlers.ErrorResponse  "Internal server error"
+// @Router       /documents/lists/pop [post]
 func listPopHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := getQueryParam(r, "key")

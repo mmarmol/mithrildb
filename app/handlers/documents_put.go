@@ -7,7 +7,24 @@ import (
 	"net/http"
 )
 
-// PutHandler stores a document using the new document model with metadata and optional CAS.
+// documentPutHandler stores a document with optional CAS and metadata.
+//
+// @Summary      Store or update a document
+// @Description  Stores a document in the specified column family. Supports optimistic concurrency via CAS.
+// @Tags         documents
+// @Accept       json
+// @Produce      json
+// @Param        key   query     string            true  "Document key"
+// @Param        cf    query     string            false "Column family (default: 'default')"
+// @Param        type  query     string            false "Document type (e.g. 'json', 'counter', 'list')"
+// @Param        cas   query     string            false "CAS (revision) for concurrency control"
+// @Param        body  body      map[string]interface{}  true  "Document value (JSON-encoded)"
+// @Success      200   {object}  model.Document
+// @Failure      400   {object}  handlers.ErrorResponse "Invalid input or missing value"
+// @Failure      404   {object}  handlers.ErrorResponse "Column family not found"
+// @Failure      409   {object}  handlers.ErrorResponse "CAS mismatch"
+// @Failure      500   {object}  handlers.ErrorResponse "Internal server error"
+// @Router       /documents [post]
 func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Required: key in query

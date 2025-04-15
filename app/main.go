@@ -36,7 +36,7 @@ func main() {
 	defer database.Close() // Este cierre se encarga de cerrar tanto la base como los CFs
 
 	// Setup HTTP routes
-	handlers.SetupRoutes(database, cfg, startTime)
+	handlers.SetupRoutes(database, &cfg, startTime)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	server := &http.Server{Addr: addr}

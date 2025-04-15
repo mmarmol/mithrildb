@@ -27,7 +27,7 @@ func getDiskStats(path string) (DiskInfo, error) {
 	}, nil
 }
 
-func GetServerMetrics(cfg config.AppConfig, startTime time.Time) (ServerMetrics, error) {
+func GetServerMetrics(cfg *config.AppConfig, startTime time.Time) (ServerMetrics, error) {
 	hostname, _ := os.Hostname()
 	mountDisk, err := getDiskStats(".")
 	if err != nil {

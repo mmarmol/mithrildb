@@ -7,7 +7,27 @@ import (
 	"net/http"
 )
 
+// SetElementRequest represents a request to add or remove an element in a set.
+// @Description Request body containing the element to operate with.
+type SetElementRequest struct {
+	Element interface{} `json:"element"`
+}
+
 // setAddHandler handles POST /documents/sets/add
+//
+// @Summary      Add element to set
+// @Description  Adds a new element to a document of type "set". If the element already exists, it will not be duplicated.
+// @Tags         sets
+// @Accept       json
+// @Produce      json
+// @Param        key   query     string                  true  "Document key"
+// @Param        cf    query     string                  false "Column family (default: 'default')"
+// @Param        body  body      handlers.SetElementRequest true "Element to add to the set"
+// @Success      200   {object}  map[string]string       "Operation successful"
+// @Failure      400   {object}  handlers.ErrorResponse  "Invalid parameters or body"
+// @Failure      404   {object}  handlers.ErrorResponse  "Document not found"
+// @Failure      500   {object}  handlers.ErrorResponse  "Internal server error"
+// @Router       /documents/sets/add [post]
 func setAddHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cf := getCfQueryParam(r)
@@ -17,9 +37,7 @@ func setAddHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			return
 		}
 
-		var req struct {
-			Element interface{} `json:"element"`
-		}
+		var req SetElementRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Element == nil {
 			respondWithErrInvalidJSONBody(w)
 			return

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"mithrildb/config"
 	"mithrildb/db"
+	"mithrildb/model"
 	"net/http"
 )
 
@@ -12,9 +13,23 @@ type multiGetRequest struct {
 	Keys []string `json:"keys"`
 }
 
-// MultiGetHandler handles POST /multiget
-// It receives a list of keys and returns a map of key to full document (with metadata).
-// Missing keys will be returned as null.
+// MultiGetResponse represents the result of a multiget.
+// @Description Map of keys to documents or null for missing entries.
+type MultiGetResponse map[string]*model.Document
+
+// bulkGetHandler handles POST /documents/bulk/get
+//
+// @Summary      Bulk document fetch
+// @Description  Retrieves multiple documents with metadata by key. Missing keys will be returned with null values.
+// @Tags         documents
+// @Accept       json
+// @Produce      json
+// @Param        cf    query     string             false  "Column family (default: 'default')"
+// @Param        body  body      multiGetRequest    true   "List of keys to retrieve"
+// @Success      200   {object}  MultiGetResponse
+// @Failure      400   {object}  ErrorResponse  "Invalid JSON or missing key list"
+// @Failure      500   {object}  ErrorResponse  "Internal server error"
+// @Router       /documents/bulk/get [post]
 func bulkGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req multiGetRequest

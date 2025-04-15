@@ -9,44 +9,57 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+// ServerConfig represents the HTTP server configuration.
+// @Description Listening port configuration for the REST API.
 type ServerConfig struct {
-	Port int
+	// Port where the HTTP server listens
+	Port int `json:"port"`
 }
 
+// RocksDBConfig holds configuration parameters for the RocksDB database.
+// @Description Detailed configuration for the RocksDB storage backend.
 type RocksDBConfig struct {
-	DBPath            string
-	CreateIfMissing   bool
-	WriteBufferSize   int
-	MaxWriteBufferNum int
-	BlockCacheSize    int
-	StatsDumpPeriod   time.Duration
-	MaxOpenFiles      int
-	EnableCompression bool
-	CompressionType   string
+	DBPath            string `json:"db_path"`              // Path to the data directory
+	CreateIfMissing   bool   `json:"create_if_missing"`    // Whether to create the DB if it doesn't exist
+	WriteBufferSize   int    `json:"write_buffer_size"`    // Size of the write buffer in bytes
+	MaxWriteBufferNum int    `json:"max_write_buffer_num"` // Maximum number of write buffers
+	BlockCacheSize    int    `json:"block_cache_size"`     // Size of the block cache in bytes
+	StatsDumpPeriod   string `json:"stats_dump_period"`    // Frequency for dumping RocksDB statistics (e.g. "30s", "1m")
+	MaxOpenFiles      int    `json:"max_open_files"`       // Maximum number of open files
+	EnableCompression bool   `json:"enable_compression"`   // Whether compression is enabled
+	CompressionType   string `json:"compression_type"`     // Compression type: snappy, zstd, lz4, none
 }
 
+// WriteOptionsConfig represents configurable write options for RocksDB.
+// @Description Controls the write behavior in RocksDB.
 type WriteOptionsConfig struct {
-	Sync       bool
-	DisableWAL bool
-	NoSlowdown bool
+	Sync       bool `json:"sync"`        // Wait for disk sync on write
+	DisableWAL bool `json:"disable_wal"` // Disable the Write-Ahead Log
+	NoSlowdown bool `json:"no_slowdown"` // Avoid blocking if RocksDB is busy
 }
 
+// ReadOptionsConfig represents configurable read options.
+// @Description Controls how data is read from the database.
 type ReadOptionsConfig struct {
-	FillCache bool
-	ReadTier  string // "all", "cache-only"
+	FillCache bool   `json:"fill_cache"` // Whether to fill cache on reads
+	ReadTier  string `json:"read_tier"`  // Read level: all or cache-only
 }
 
+// AppConfig represents the full configuration loaded by the application.
+// @Description Global server and database configuration.
 type AppConfig struct {
-	Server        ServerConfig
-	RocksDB       *RocksDBConfig
-	WriteDefaults WriteOptionsConfig
-	ReadDefaults  ReadOptionsConfig
+	Server        ServerConfig       `json:"server"`
+	RocksDB       *RocksDBConfig     `json:"rocksdb"`
+	WriteDefaults WriteOptionsConfig `json:"write_defaults"`
+	ReadDefaults  ReadOptionsConfig  `json:"read_defaults"`
 }
 
+// UpdateResult represents the result of a configuration update.
+// @Description Outcome when applying changes to the configuration file.
 type UpdateResult struct {
-	Applied  []string
-	Pending  []string
-	Rejected map[string]string
+	Applied  []string          `json:"applied"`          // Parameters applied immediately
+	Pending  []string          `json:"requires_restart"` // Parameters that require a restart
+	Rejected map[string]string `json:"rejected"`         // Parameters rejected with reasons
 }
 
 func LoadConfig() AppConfig {
@@ -77,7 +90,7 @@ func LoadConfig() AppConfig {
 				WriteBufferSize:   r.Key("WriteBufferSize").MustInt(32 * 1024 * 1024), // 32MB
 				MaxWriteBufferNum: r.Key("MaxWriteBufferNumber").MustInt(2),
 				BlockCacheSize:    r.Key("BlockCacheSize").MustInt(128 * 1024 * 1024), // 128MB
-				StatsDumpPeriod:   r.Key("StatsDumpPeriod").MustDuration(1 * time.Minute),
+				StatsDumpPeriod:   r.Key("StatsDumpPeriod").MustString("1m"),
 				MaxOpenFiles:      r.Key("MaxOpenFiles").MustInt(500),
 				EnableCompression: r.Key("EnableCompression").MustBool(false),
 				CompressionType:   r.Key("CompressionType").MustString("snappy"),
@@ -100,7 +113,7 @@ func LoadConfig() AppConfig {
 		}
 	}
 
-	// Si no se cargó desde archivo, establecer defaults manualmente
+	// if file not loaded them defaults
 	if cfg.RocksDB == nil {
 		cfg.RocksDB = &RocksDBConfig{
 			DBPath:            "./data",
@@ -108,7 +121,7 @@ func LoadConfig() AppConfig {
 			WriteBufferSize:   32 * 1024 * 1024,
 			MaxWriteBufferNum: 2,
 			BlockCacheSize:    128 * 1024 * 1024,
-			StatsDumpPeriod:   1 * time.Minute,
+			StatsDumpPeriod:   "1m",
 			MaxOpenFiles:      500,
 			EnableCompression: false,
 			CompressionType:   "snappy",
@@ -120,7 +133,7 @@ func LoadConfig() AppConfig {
 }
 
 // UpdateConfigFromMap processes updates to the RocksDB section of the config file.
-func UpdateConfigFromMap(cfg AppConfig, req map[string]interface{}) (*UpdateResult, error) {
+func UpdateConfigFromMap(cfg *AppConfig, req map[string]interface{}) (*UpdateResult, error) {
 	iniFile, err := ini.Load(cfg.RocksDB.DBPath)
 	if err != nil {
 		return nil, err

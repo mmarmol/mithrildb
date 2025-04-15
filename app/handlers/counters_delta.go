@@ -7,16 +7,40 @@ import (
 	"net/http"
 )
 
+// incrementRequest represents the JSON body for a counter modification request.
+//
+// It expects a non-zero numeric value in the `delta` field. It can be positive or negative.
+//
+// Examples:
+//
+//	{"delta": 5}     // Increment by 5
+//	{"delta": -2}    // Decrement by 2
 type incrementRequest struct {
+	// The amount to increment (positive) or decrement (negative) the counter.
 	Delta int64 `json:"delta"`
 }
 
+// incrementResponse represents the response for a counter delta operation.
 type incrementResponse struct {
-	Old int64 `json:"old"`
-	New int64 `json:"new"`
+	Old int64 `json:"old"` // Previous value
+	New int64 `json:"new"` // New value
 }
 
-// CounterIncrementHandler handles POST /counters/delta
+// deltaCounterHandler applies a delta operation to a counter document.
+//
+// @Summary      Modify counter
+// @Description  Increments or decrements a counter document by a given integer value.
+// @Tags         counters
+// @Accept       json
+// @Produce      json
+// @Param        key   query     string               true  "Document key"
+// @Param        cf    query     string               false "Column family (default: 'default')"
+// @Param        body  body      incrementRequest     true  "Delta value for increment or decrement"
+// @Success      200   {object}  incrementResponse
+// @Failure      400   {object}  handlers.ErrorResponse  "Invalid parameters or JSON body"
+// @Failure      404   {object}  handlers.ErrorResponse  "Document not found"
+// @Failure      500   {object}  handlers.ErrorResponse  "Internal server error"
+// @Router       /documents/counters/delta [post]
 func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get required 'key' query param

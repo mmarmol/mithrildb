@@ -49,7 +49,9 @@ func (db *DB) ListKeys(cf string, prefix string, startAfter string, limit int, o
 			break
 		}
 	}
-
+	if keys == nil {
+		keys = []string{}
+	}
 	return keys, nil
 }
 

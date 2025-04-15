@@ -7,7 +7,21 @@ import (
 	"net/http"
 )
 
-// GetHandler retrieves a full document including metadata.
+// documentGetHandler handles GET /documents
+//
+// @Summary      Retrieve a document
+// @Description  Retrieves a document by key, including its value and metadata.
+// @Tags         documents
+// @Produce      json
+// @Param        key  query     string  true   "Document key"
+// @Param        cf   query     string  false  "Column family (default: 'default')"
+// @Param        fill_cache query bool false "Optional RocksDB fill cache read option"
+// @Param        read_tier query string false "Optional RocksDB read tier (e.g. 'all', 'cache-only')"
+// @Success      200  {object}  model.Document
+// @Failure      400  {object}  handlers.ErrorResponse  "Missing or invalid key"
+// @Failure      404  {object}  handlers.ErrorResponse  "Document not found"
+// @Failure      500  {object}  handlers.ErrorResponse  "Internal server error"
+// @Router       /documents [get]
 func documentGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Required: key

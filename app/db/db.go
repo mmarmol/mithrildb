@@ -5,6 +5,7 @@ import (
 	"mithrildb/config"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/linxGnu/grocksdb"
 )
@@ -57,7 +58,11 @@ func NewRocksDBFromConfig(cfg config.RocksDBConfig) (*grocksdb.TransactionDB, ma
 	opts.SetWriteBufferSize(uint64(cfg.WriteBufferSize))
 	opts.SetMaxWriteBufferNumber(cfg.MaxWriteBufferNum)
 	opts.SetMaxOpenFiles(cfg.MaxOpenFiles)
-	opts.SetStatsDumpPeriodSec(uint(cfg.StatsDumpPeriod.Seconds()))
+	dur, err := time.ParseDuration(cfg.StatsDumpPeriod)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid stats_dump_period: %w", err)
+	}
+	opts.SetStatsDumpPeriodSec(uint(dur.Seconds()))
 
 	// Configuración de tabla basada en bloques y cache
 	bbto := grocksdb.NewDefaultBlockBasedTableOptions()

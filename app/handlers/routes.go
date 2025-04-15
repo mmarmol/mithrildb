@@ -12,14 +12,14 @@ import (
 )
 
 // SetupRoutes registers all HTTP routes with their handlers using a RESTful structure.
-func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
+func SetupRoutes(database *db.DB, cfg *config.AppConfig, startTime time.Time) {
 
 	http.Handle("/api/", httpSwagger.WrapHandler)
 
 	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			configGetHandler(cfg)
+			configGetHandler(cfg)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
@@ -28,12 +28,21 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	http.HandleFunc("/config/update", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPut:
-			configUpdateHandler(cfg, database)
+			configUpdateHandler(cfg)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
 	})
 
+	// pingHandler handles GET /ping
+	//
+	// @Summary      Ping endpoint
+	// @Description  Returns a simple "pong" response to verify service availability.
+	// @Tags         system
+	// @Produce      plain
+	// @Success      200  {string}  string  "pong"
+	// @Failure      405  {object}  handlers.ErrorResponse  "Method not allowed"
+	// @Router       /ping [get]
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -47,7 +56,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			metricsHandler(database, cfg, startTime)
+			metricsHandler(database, cfg, startTime)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
@@ -68,7 +77,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	http.HandleFunc("/documents/keys", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			http.HandleFunc("/documents/keys", listKeysHandler(database, cfg.ReadDefaults))
+			listKeysHandler(database, cfg.ReadDefaults)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
@@ -94,7 +103,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	})
 
 	http.HandleFunc("/documents/list", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
+		if r.Method == http.MethodGet {
 			listDocumentsHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)

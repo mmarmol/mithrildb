@@ -7,8 +7,24 @@ import (
 	"net/http"
 )
 
-// ReplaceHandler handles POST /replace?key=...&cf=...&type=...
-// The document is only inserted if it doesn't already exist.
+// documentReplaceHandler replaces an existing document by key, optionally using CAS.
+//
+// @Summary      Replace an existing document
+// @Description  Replaces a document if it already exists. Fails if the key does not exist. Supports CAS for concurrency control.
+// @Tags         documents
+// @Accept       json
+// @Produce      json
+// @Param        key   query     string                 true  "Document key"
+// @Param        cf    query     string                 false "Column family (default: 'default')"
+// @Param        type  query     string                 false "Document type (e.g. 'json', 'counter', 'list')"
+// @Param        cas   query     string                 false "CAS (revision) for concurrency control"
+// @Param        body  body      map[string]interface{} true  "New value for the document"
+// @Success      200   {object}  model.Document
+// @Failure      400   {object}  handlers.ErrorResponse "Invalid request or missing value"
+// @Failure      404   {object}  handlers.ErrorResponse "Key not found or column family missing"
+// @Failure      409   {object}  handlers.ErrorResponse "CAS mismatch"
+// @Failure      500   {object}  handlers.ErrorResponse "Internal server error"
+// @Router       /documents/replace [post]
 func documentReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Required: key

@@ -11,13 +11,43 @@ import (
 	"github.com/google/uuid"
 )
 
+// BulkPutRequestEntry represents a single entry in a bulk document insert request.
+//
+// Each entry includes a value and an optional document type.
+// If the type is not provided, "json" will be assumed.
+//
+// Example:
+//
+//	{
+//	  "user:1": { "value": { "name": "Alice" }, "type": "json" },
+//	  "counter:1": { "value": 42, "type": "counter" }
+//	}
+type BulkPutRequestEntry struct {
+	// The value to store for the document.
+	// Can be a string, number, object, array, etc.
+	Value interface{} `json:"value"`
+
+	// Optional document type (e.g., "json", "counter", "list", "set").
+	// If omitted, "json" is assumed.
+	Type string `json:"type,omitempty"`
+}
+
+// bulkPutHandler stores multiple documents in a single request.
+//
+// @Summary      Bulk insert documents
+// @Description  Stores multiple documents in a single call. Each document is defined by a key and a value/type pair.
+// @Tags         documents
+// @Accept       json
+// @Produce      json
+// @Param        cf    query     string                              false  "Column family (defaults to 'default')"
+// @Param        body  body      map[string]handlers.BulkPutRequestEntry  true  "Map of key to value/type entry"
+// @Success      200   {object}  map[string]model.Document
+// @Failure      400   {object}  handlers.ErrorResponse  "Invalid input or empty payload"
+// @Failure      500   {object}  handlers.ErrorResponse  "Internal server error"
+// @Router       /documents/bulk/put [post]
 func bulkPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Decode body: map of key -> { value, type }
-		var payload map[string]struct {
-			Value interface{} `json:"value"`
-			Type  string      `json:"type"`
-		}
+		var payload map[string]BulkPutRequestEntry
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			respondWithErrInvalidJSONBody(w)
 			return

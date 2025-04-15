@@ -17,7 +17,7 @@ func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (ma
 	}
 
 	if len(keys) == 0 {
-		return nil, nil
+		return map[string]*model.Document{}, nil
 	}
 
 	byteKeys := make([][]byte, len(keys))

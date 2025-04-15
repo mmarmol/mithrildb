@@ -9,7 +9,14 @@ import (
 	"net/http"
 )
 
-// ErrorResponse represents a standard JSON error message.
+// ErrorResponse represents a standardized error message returned by the API.
+// It includes a human-readable explanation of the error.
+//
+// Example:
+//
+//	{
+//	  "error": "key not found"
+//	}
 type ErrorResponse struct {
 	Error string `json:"error"`
 }

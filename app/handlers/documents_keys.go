@@ -9,7 +9,20 @@ import (
 )
 
 // listKeysHandler handles GET /keys
-// Supports optional parameters: cf, prefix, start_after, limit, fill_cache, read_tier
+//
+// @Summary      List document keys
+// @Description  Returns a list of keys within the specified column family, optionally filtered by prefix and pagination options.
+// @Tags         keys
+// @Produce      json
+// @Param        cf           query  string  false  "Column family (default: 'default')"
+// @Param        prefix       query  string  false  "Only return keys with this prefix"
+// @Param        start_after  query  string  false  "Return keys after this key (for pagination)"
+// @Param        limit        query  int     false  "Maximum number of keys to return (default: 100)"
+// @Param        fill_cache   query  bool    false  "Whether to fill RocksDB read cache"
+// @Param        read_tier    query  string  false  "RocksDB read tier (e.g. 'all', 'cache-only')"
+// @Success      200  {array}  string
+// @Failure      500  {object}  handlers.ErrorResponse  "Internal server error"
+// @Router       /documents/keys [get]
 func listKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cf := getCfQueryParam(r)
