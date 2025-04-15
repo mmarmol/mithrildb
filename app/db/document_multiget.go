@@ -50,7 +50,11 @@ func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (ma
 			if err := json.Unmarshal(val.Data(), &doc); err != nil {
 				return nil, fmt.Errorf("failed to decode document for key '%s': %w", keys[i], err)
 			}
-			result[keys[i]] = &doc
+			if model.IsExpired(doc.Meta) {
+				result[keys[i]] = nil
+			} else {
+				result[keys[i]] = &doc
+			}
 		}
 	}
 

@@ -34,5 +34,9 @@ func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (*model.Document, 
 		return nil, fmt.Errorf("failed to decode stored document: %w", err)
 	}
 
+	if model.IsExpired(doc.Meta) {
+		return nil, nil
+	}
+
 	return &doc, nil
 }

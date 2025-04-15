@@ -59,6 +59,11 @@ func (db *DB) withSetTransaction(opts SetOpOptions, modifier func(map[interface{
 		return nil, ErrInvalidSetType
 	}
 
+	if model.IsExpired(doc.Meta) {
+		txn.Rollback()
+		return nil, ErrKeyNotFound
+	}
+
 	set := make(map[interface{}]bool)
 	for _, v := range slice {
 		set[v] = true
@@ -79,6 +84,13 @@ func (db *DB) withSetTransaction(opts SetOpOptions, modifier func(map[interface{
 	doc.Value = newSlice
 	doc.Meta.Rev = uuid.NewString()
 	doc.Meta.UpdatedAt = time.Now()
+
+	err = model.ValidateExpiration(opts.Expiration)
+	if err != nil {
+		txn.Rollback()
+		return nil, err
+	}
+
 	doc.Meta.Expiration = opts.Expiration
 
 	data, err := json.Marshal(doc)
@@ -100,7 +112,6 @@ func (db *DB) withSetTransaction(opts SetOpOptions, modifier func(map[interface{
 	return result, nil
 }
 
-// SetAdd agrega un elemento al set si no existe
 func (db *DB) SetAdd(opts SetOpOptions, element interface{}) (interface{}, error) {
 	return db.withSetTransaction(opts, func(set map[interface{}]bool) (map[interface{}]bool, interface{}, error) {
 		set[element] = true
@@ -108,7 +119,6 @@ func (db *DB) SetAdd(opts SetOpOptions, element interface{}) (interface{}, error
 	})
 }
 
-// SetRemove elimina un elemento del set
 func (db *DB) SetRemove(opts SetOpOptions, element interface{}) (interface{}, error) {
 	return db.withSetTransaction(opts, func(set map[interface{}]bool) (map[interface{}]bool, interface{}, error) {
 		delete(set, element)

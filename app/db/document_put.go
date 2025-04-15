@@ -91,6 +91,12 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		txn = nil
 	}
 
+	err = model.ValidateExpiration(opts.Expiration)
+	if err != nil {
+		txn.Rollback()
+		return nil, err
+	}
+
 	// Prepare the new document
 	now := time.Now()
 	doc := model.Document{

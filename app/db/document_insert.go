@@ -55,8 +55,23 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 	defer val.Free()
 
 	if val.Exists() {
+		raw := val.Data()
+		var existing model.Document
+		if err := json.Unmarshal(raw, &existing); err == nil {
+			if !model.IsExpired(existing.Meta) {
+				txn.Rollback()
+				return nil, ErrKeyAlreadyExists
+			}
+		} else {
+			txn.Rollback()
+			return nil, fmt.Errorf("invalid existing document: %w", err)
+		}
+	}
+
+	err = model.ValidateExpiration(opts.Expiration)
+	if err != nil {
 		txn.Rollback()
-		return nil, ErrKeyAlreadyExists
+		return nil, err
 	}
 
 	// Build new document

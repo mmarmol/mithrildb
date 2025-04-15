@@ -13,6 +13,7 @@ var (
 	ErrInvalidCounterValue = errors.New("document is not a valid counter")
 	ErrInvalidCounterType  = errors.New("unsupported value type for counter")
 	ErrInvalidDocumentKey  = errors.New("invalid document key")
+	ErrInvalidExpiration   = errors.New("invalid expiration value")
 )
 
 const (
@@ -100,4 +101,29 @@ func ValidateDocumentKey(key string) error {
 		return fmt.Errorf("%w: key cannot start or end with ':'", ErrInvalidDocumentKey)
 	}
 	return nil
+}
+
+func IsExpired(meta Metadata) bool {
+	if meta.Expiration <= 0 {
+		return false // 0 o negativo significa "sin expiración"
+	}
+	return time.Now().Unix() > meta.Expiration
+}
+
+func ValidateExpiration(exp int64) error {
+	const maxFutureOffset = 60 * 60 * 24 * 365 * 100 // 100 años
+	now := time.Now().Unix()
+
+	switch {
+	case exp < 0:
+		return ErrInvalidExpiration
+	case exp == 0:
+		return nil // sin expiración
+	case exp < now:
+		return ErrInvalidExpiration // ya está vencido
+	case exp > now+maxFutureOffset:
+		return ErrInvalidExpiration // demasiado en el futuro
+	default:
+		return nil
+	}
 }

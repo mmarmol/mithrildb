@@ -55,6 +55,24 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 		return nil, ErrKeyNotFound
 	}
 
+	raw := val.Data()
+	var existing model.Document
+	if err := json.Unmarshal(raw, &existing); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to parse document: %w", err)
+	}
+
+	if model.IsExpired(existing.Meta) {
+		txn.Rollback()
+		return nil, ErrKeyNotFound
+	}
+
+	err = model.ValidateExpiration(opts.Expiration)
+	if err != nil {
+		txn.Rollback()
+		return nil, err
+	}
+
 	now := time.Now()
 	doc := model.Document{
 		Key:   opts.Key,
