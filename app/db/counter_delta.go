@@ -17,8 +17,9 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, opts *grocksdb.WriteOpti
 	if !ok {
 		return 0, 0, ErrInvalidColumnFamily
 	}
-	if key == "" {
-		return 0, 0, ErrEmptyKey
+	err = model.ValidateDocumentKey(key)
+	if err != nil {
+		return 0, 0, err
 	}
 
 	// Prepare transaction

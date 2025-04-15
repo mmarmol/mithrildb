@@ -18,8 +18,9 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 		return nil, ErrInvalidColumnFamily
 	}
 
-	if opts.Key == "" {
-		return nil, ErrEmptyKey
+	err := model.ValidateDocumentKey(opts.Key)
+	if err != nil {
+		return nil, err
 	}
 
 	if opts.Value == nil {

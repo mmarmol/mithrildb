@@ -15,7 +15,10 @@ func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (*model.Document, 
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
-
+	err := model.ValidateDocumentKey(key)
+	if err != nil {
+		return nil, err
+	}
 	value, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
 	if err != nil {
 		return nil, err

@@ -18,6 +18,11 @@ func (db *DB) withSetTransaction(opts SetOpOptions, modifier func(map[interface{
 		return nil, ErrInvalidColumnFamily
 	}
 
+	err := model.ValidateDocumentKey(opts.Key)
+	if err != nil {
+		return false, err
+	}
+
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()

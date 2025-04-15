@@ -22,6 +22,10 @@ func (db *DB) MultiGet(cf string, keys []string, opts *grocksdb.ReadOptions) (ma
 
 	byteKeys := make([][]byte, len(keys))
 	for i, k := range keys {
+		err := model.ValidateDocumentKey(k)
+		if err != nil {
+			return nil, err
+		}
 		byteKeys[i] = []byte(k)
 	}
 

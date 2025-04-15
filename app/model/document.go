@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 )
 
 var (
 	ErrInvalidCounterValue = errors.New("document is not a valid counter")
 	ErrInvalidCounterType  = errors.New("unsupported value type for counter")
+	ErrInvalidDocumentKey  = errors.New("invalid document key")
 )
 
 const (
@@ -82,4 +85,19 @@ func ParseCounterValue(val interface{}) (int64, error) {
 	default:
 		return 0, ErrInvalidCounterType
 	}
+}
+
+var docKeyRegex = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,250}$`)
+
+func ValidateDocumentKey(key string) error {
+	if !docKeyRegex.MatchString(key) {
+		return fmt.Errorf("%w: invalid characters or length", ErrInvalidDocumentKey)
+	}
+	if strings.HasPrefix(key, ".") || strings.HasSuffix(key, ".") {
+		return fmt.Errorf("%w: key cannot start or end with '.'", ErrInvalidDocumentKey)
+	}
+	if strings.HasPrefix(key, ":") || strings.HasSuffix(key, ":") {
+		return fmt.Errorf("%w: key cannot start or end with ':'", ErrInvalidDocumentKey)
+	}
+	return nil
 }

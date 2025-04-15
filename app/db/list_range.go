@@ -15,6 +15,11 @@ func (db *DB) ListRange(cf string, key string, start, end int, opts *grocksdb.Re
 		return nil, ErrInvalidColumnFamily
 	}
 
+	err := model.ValidateDocumentKey(key)
+	if err != nil {
+		return nil, err
+	}
+
 	if opts == nil {
 		opts = db.DefaultReadOptions
 	}

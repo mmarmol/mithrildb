@@ -24,6 +24,10 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, opts *grocksdb.W
 
 	for k, rawValue := range pairs {
 		// Validate value type (defaults to json for now)
+		err := model.ValidateDocumentKey(k)
+		if err != nil {
+			return err
+		}
 		if err := model.ValidateValue(rawValue, model.DocTypeJSON); err != nil {
 			return fmt.Errorf("invalid value for key '%s': %w", k, err)
 		}

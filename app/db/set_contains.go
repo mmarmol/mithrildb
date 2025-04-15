@@ -19,6 +19,11 @@ func (db *DB) SetContains(cf string, key string, element interface{}, opts *groc
 		opts = db.DefaultReadOptions
 	}
 
+	err := model.ValidateDocumentKey(key)
+	if err != nil {
+		return false, err
+	}
+
 	val, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
 	if err != nil {
 		return false, err

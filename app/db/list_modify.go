@@ -24,6 +24,10 @@ func (db *DB) withListTransaction(opts ListOpOptions, modifier func([]interface{
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
+	err := model.ValidateDocumentKey(opts.Key)
+	if err != nil {
+		return nil, err
+	}
 
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
 	txnOpts.SetSetSnapshot(true)
