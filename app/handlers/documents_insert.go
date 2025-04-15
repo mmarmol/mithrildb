@@ -7,8 +7,23 @@ import (
 	"net/http"
 )
 
-// InsertHandler handles POST /insert?key=...&cf=...&type=...
-// The document is only inserted if it doesn't already exist.
+// @Summary Insert a document
+// @Description Insert a new document only if the key does not already exist
+// @Tags documents
+// @Accept json
+// @Produce json
+// @Param key query string true "Document key"
+// @Param cf query string false "Column family (defaults to 'default')"
+// @Param type query string false "Document type (json, counter, list, set)"
+// @Param sync query bool false "Write option: sync"
+// @Param disable_wal query bool false "Write option: disable WAL"
+// @Param no_slowdown query bool false "Write option: no slowdown"
+// @Param document body map[string]interface{} true "Document value body. Must contain 'value' field"
+// @Success 200 {object} model.Document
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 409 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /documents/insert [post]
 func documentInsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Required: key

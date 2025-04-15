@@ -5,10 +5,16 @@ import (
 	"mithrildb/db"
 	"net/http"
 	"time"
+
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "mithrildb/docs"
 )
 
 // SetupRoutes registers all HTTP routes with their handlers using a RESTful structure.
 func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
+
+	http.Handle("/api/", httpSwagger.WrapHandler)
 
 	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

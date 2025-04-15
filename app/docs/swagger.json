@@ -1,0 +1,153 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/documents/insert": {
+            "post": {
+                "description": "Insert a new document only if the key does not already exist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Insert a document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document key",
+                        "name": "key",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column family (defaults to 'default')",
+                        "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Document type (json, counter, list, set)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Write option: sync",
+                        "name": "sync",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Write option: disable WAL",
+                        "name": "disable_wal",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Write option: no slowdown",
+                        "name": "no_slowdown",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Document value body. Must contain 'value' field",
+                        "name": "document",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Document"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Document": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "description": "Logical key",
+                    "type": "string"
+                },
+                "meta": {
+                    "description": "Metadata for versioning, expiration, etc.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Metadata"
+                        }
+                    ]
+                },
+                "value": {
+                    "description": "Content: string, int, []string, map[string]any, etc."
+                }
+            }
+        },
+        "model.Metadata": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "When document was created",
+                    "type": "string"
+                },
+                "expiration": {
+                    "description": "TTL as Unix timestamp (0 = never)",
+                    "type": "integer"
+                },
+                "rev": {
+                    "description": "Revision ID for conflict resolution",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Document type (json, counter, list, set)",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "When document was last updated",
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
