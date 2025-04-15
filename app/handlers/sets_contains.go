@@ -24,7 +24,11 @@ import (
 // @Router       /documents/sets/contains [get]
 func setContainsHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 		key, err := getQueryParam(r, "key")
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())

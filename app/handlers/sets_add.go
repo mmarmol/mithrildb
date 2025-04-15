@@ -30,7 +30,11 @@ type SetElementRequest struct {
 // @Router       /documents/sets/add [post]
 func setAddHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 		key, err := getQueryParam(r, "key")
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())

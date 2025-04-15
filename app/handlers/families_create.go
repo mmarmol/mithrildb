@@ -48,6 +48,11 @@ func createFamilyHandler(database *db.DB) http.HandlerFunc {
 			return
 		}
 
+		if !db.IsValidUserCF(name) {
+			mapAndRespondWithError(w, db.ErrInvalidUserColumnFamily)
+			return
+		}
+
 		err := database.CreateFamily(name)
 		if err != nil {
 			mapAndRespondWithError(w, err)

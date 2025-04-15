@@ -31,7 +31,11 @@ func listShiftHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		opts := database.DefaultWriteOptions
 		if db.HasWriteOptions(r) {

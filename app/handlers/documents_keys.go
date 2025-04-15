@@ -25,7 +25,11 @@ import (
 // @Router       /documents/keys [get]
 func listKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		prefix := r.URL.Query().Get("prefix")
 		startAfter := r.URL.Query().Get("start_after")

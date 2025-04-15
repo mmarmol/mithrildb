@@ -33,7 +33,12 @@ func documentInsertHandler(database *db.DB, defaults config.WriteOptionsConfig) 
 			return
 		}
 
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+
 		docType := getDocTypeQueryParam(r)
 
 		// Read JSON body

@@ -42,7 +42,11 @@ func listPushHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		var req listElementRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -57,7 +57,11 @@ func bulkPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 			return
 		}
 
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		// Write options
 		opts := database.DefaultWriteOptions

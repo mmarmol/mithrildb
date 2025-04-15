@@ -24,7 +24,6 @@ type Metadata struct {
 	Rev        string    `json:"rev"`        // Revision ID for conflict resolution
 	Expiration int64     `json:"expiration"` // TTL as Unix timestamp (0 = never)
 	Type       string    `json:"type"`       // Document type (json, counter, list, set)
-	CreatedAt  time.Time `json:"created_at"` // When document was created
 	UpdatedAt  time.Time `json:"updated_at"` // When document was last updated
 }
 

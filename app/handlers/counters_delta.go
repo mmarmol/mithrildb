@@ -50,7 +50,11 @@ func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 			return
 		}
 
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		// Parse JSON body with delta
 		var req incrementRequest

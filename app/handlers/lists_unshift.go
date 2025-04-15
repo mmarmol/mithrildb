@@ -32,7 +32,11 @@ func listUnshiftHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		var req struct {
 			Element interface{} `json:"element"`

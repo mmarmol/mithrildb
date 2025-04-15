@@ -34,7 +34,11 @@ func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			return
 		}
 
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 		docType := getDocTypeQueryParam(r)
 		cas := getCasQueryParam(r)
 

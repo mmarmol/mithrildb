@@ -52,12 +52,15 @@ func getCasQueryParam(r *http.Request) string {
 	return r.URL.Query().Get("cas")
 }
 
-func getCfQueryParam(r *http.Request) string {
+func getCfQueryParam(r *http.Request) (string, error) {
 	cf := r.URL.Query().Get("cf")
 	if cf == "" {
 		cf = "default"
 	}
-	return cf
+	if !db.IsValidUserCF(cf) {
+		return "", db.ErrInvalidUserColumnFamily
+	}
+	return cf, nil
 }
 
 func getDocTypeQueryParam(r *http.Request) string {
@@ -90,6 +93,8 @@ func mapErrorToResponse(err error) (int, string) {
 		return http.StatusBadRequest, err.Error()
 	case errors.Is(err, db.ErrFamilyExists):
 		return http.StatusConflict, err.Error()
+	case errors.Is(err, db.ErrInvalidUserColumnFamily):
+		return http.StatusBadRequest, err.Error()
 	default:
 		return http.StatusInternalServerError, "internal server error"
 	}

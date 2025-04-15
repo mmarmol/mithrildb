@@ -33,7 +33,11 @@ func listRangeHandler(database *db.DB, defaults config.ReadOptionsConfig) http.H
 			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		start, _ := strconv.Atoi(r.URL.Query().Get("start"))
 		end, _ := strconv.Atoi(r.URL.Query().Get("end"))

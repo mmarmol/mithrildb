@@ -33,7 +33,11 @@ func documentReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 		docType := getDocTypeQueryParam(r)
 		cas := getCasQueryParam(r)
 

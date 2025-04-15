@@ -31,7 +31,11 @@ func documentGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http
 			return
 		}
 
-		cf := getCfQueryParam(r)
+		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		opts := database.DefaultReadOptions
 		override := db.HasReadOptions(r)
