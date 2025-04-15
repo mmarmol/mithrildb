@@ -17,7 +17,7 @@ type incrementResponse struct {
 }
 
 // CounterIncrementHandler handles POST /counters/delta
-func DeltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get required 'key' query param
 		key, err := getQueryParam(r, "key")

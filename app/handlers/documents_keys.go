@@ -8,9 +8,9 @@ import (
 	"strconv"
 )
 
-// ListKeysHandler handles GET /keys
+// listKeysHandler handles GET /keys
 // Supports optional parameters: cf, prefix, start_after, limit, fill_cache, read_tier
-func ListKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
+func listKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cf := getCfQueryParam(r)
 

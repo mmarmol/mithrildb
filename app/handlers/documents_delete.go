@@ -6,8 +6,14 @@ import (
 	"net/http"
 )
 
-func DeleteHandler(database *db.DB, defaults config.WriteOptionsConfig, key string) http.HandlerFunc {
+func documentDeleteHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Required: key
+		key, err := getQueryParam(r, "key")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		cf := getCfQueryParam(r)
 
 		// Determine write options

@@ -58,7 +58,7 @@ fi
 # -----------------------------------
 echo
 echo "🔹 GET document"
-DOC=$(curl -s "http://localhost:$PORT/documents/foo?cf=logs")
+DOC=$(curl -s "http://localhost:$PORT/documents?cf=logs&key=foo")
 echo "Response: $DOC"
 echo "$DOC" | grep -q '"value":"bar"' && echo "✅ Value is bar" || (echo "❌ Value incorrect"; exit 1)
 CAS=$(echo "$DOC" | grep -o '"rev":"[^"]*' | cut -d':' -f2 | tr -d '"')
@@ -93,14 +93,14 @@ MULTIPUT_PAYLOAD='{
 }'
 MPUT=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
     -H "Content-Type: application/json" \
-    -d "$MULTIPUT_PAYLOAD" "http://localhost:$PORT/documents/bulk?cf=logs")
+    -d "$MULTIPUT_PAYLOAD" "http://localhost:$PORT/documents/bulk/put?cf=logs")
 [ "$MPUT" = "200" ] && echo "✅ Multiput succeeded" || (echo "❌ Multiput failed"; exit 1)
 
 echo
 echo "🔹 MULTIGET"
 REQ='{"keys":["k1","k2","k3"]}'
 RESP=$(curl -s -X POST -H "Content-Type: application/json" -d "$REQ" \
-    "http://localhost:$PORT/documents/get?cf=logs")
+    "http://localhost:$PORT/documents/bulk/get?cf=logs")
 echo "MultiGet: $RESP"
 echo "$RESP" | grep -q '"k1":' && echo "✅ k1 ok" || echo "❌ k1 missing"
 echo "$RESP" | grep -q '"k2":' && echo "✅ k2 ok" || echo "❌ k2 missing"
@@ -141,7 +141,7 @@ fi
 
 echo
 echo "🔹 GET inserted document"
-INSERTED_DOC=$(curl -s "http://localhost:$PORT/documents/insert-key?cf=logs")
+INSERTED_DOC=$(curl -s "http://localhost:$PORT/documents?cf=logs&key=insert-key")
 echo "Response: $INSERTED_DOC"
 echo "$INSERTED_DOC" | grep -q '"value":"initial"' && echo "✅ Value is correct" || (echo "❌ Incorrect value"; exit 1)
 
@@ -150,7 +150,7 @@ echo "$INSERTED_DOC" | grep -q '"value":"initial"' && echo "✅ Value is correct
 # -----------------------------------
 echo
 echo "🔹 LIST KEYS"
-KEYS=$(curl -s "http://localhost:$PORT/keys?cf=logs&prefix=k")
+KEYS=$(curl -s "http://localhost:$PORT/documents/keys?cf=logs&prefix=k")
 echo "KEYS: $KEYS"
 
 # -----------------------------------
@@ -158,7 +158,7 @@ echo "KEYS: $KEYS"
 # -----------------------------------
 echo
 echo "🔹 LIST DOCUMENTS"
-DOCS=$(curl -s "http://localhost:$PORT/documents?cf=logs&prefix=k")
+DOCS=$(curl -s "http://localhost:$PORT/documents/list?cf=logs&prefix=k")
 echo "DOCS: $DOCS"
 echo "$DOCS" | grep -q '"k1":' && echo "✅ k1 present" || echo "❌ k1 missing"
 echo "$DOCS" | grep -q '"meta":' && echo "✅ metadata found" || echo "❌ metadata missing"

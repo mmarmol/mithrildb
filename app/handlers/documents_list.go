@@ -8,8 +8,8 @@ import (
 	"strconv"
 )
 
-// ListDocumentsHandler handles GET /documents with optional prefix, pagination and read options.
-func ListDocumentsHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
+// listDocumentsHandler handles GET /documents with optional prefix, pagination and read options.
+func listDocumentsHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cf := getCfQueryParam(r)
 

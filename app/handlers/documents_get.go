@@ -8,8 +8,15 @@ import (
 )
 
 // GetHandler retrieves a full document including metadata.
-func GetHandler(database *db.DB, defaults config.ReadOptionsConfig, key string) http.HandlerFunc {
+func documentGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Required: key
+		key, err := getQueryParam(r, "key")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		cf := getCfQueryParam(r)
 
 		opts := database.DefaultReadOptions

@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func ListFamiliesHandler(database *db.DB) http.HandlerFunc {
+func listFamiliesHandler(database *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		names := database.ListFamilyNames()
 

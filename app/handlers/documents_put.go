@@ -7,21 +7,21 @@ import (
 	"net/http"
 )
 
-// InsertHandler handles POST /insert?key=...&cf=...&type=...
-// The document is only inserted if it doesn't already exist.
-func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+// PutHandler stores a document using the new document model with metadata and optional CAS.
+func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Required: key
+		// Required: key in query
 		key, err := getQueryParam(r, "key")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		cf := getCfQueryParam(r)
 		docType := getDocTypeQueryParam(r)
+		cas := getCasQueryParam(r)
 
-		// Read JSON body
+		// Parse the body (value can be any valid JSON type)
 		var body struct {
 			Value interface{} `json:"value"`
 		}
@@ -42,21 +42,24 @@ func InsertHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			defer opts.Destroy()
 		}
 
-		// Attempt insert
-		doc, err := database.Insert(db.PutOptions{
+		// Build put options
+		putOpts := db.PutOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Value:        body.Value,
+			Cas:          cas,
 			Type:         docType,
 			WriteOptions: opts,
-		})
+		}
 
+		// Execute put
+		doc, err := database.PutWithOptions(putOpts)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
 		}
 
-		// Success
+		// Respond with document
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(doc)
 	}

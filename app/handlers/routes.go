@@ -4,78 +4,106 @@ import (
 	"mithrildb/config"
 	"mithrildb/db"
 	"net/http"
-	"strings"
 	"time"
 )
 
 // SetupRoutes registers all HTTP routes with their handlers using a RESTful structure.
 func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
-	// Config endpoints
-	http.HandleFunc("/config", ConfigGetHandler(cfg))
-	http.HandleFunc("/config/update", ConfigUpdateHandler(cfg, database))
-
-	// Standard endpoints
-	http.HandleFunc("/ping", PingHandler())
-	http.HandleFunc("/metrics", MetricsHandler(database, cfg, startTime))
-
-	// Column families
-	http.HandleFunc("/families", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			ListFamiliesHandler(database)(w, r)
-		case http.MethodPost:
-			CreateFamilyHandler(database)(w, r)
+			configGetHandler(cfg)
 		default:
 			respondWithNotAllowed(w)
 		}
 	})
 
-	// Key-only listing
-	http.HandleFunc("/keys", ListKeysHandler(database, cfg.ReadDefaults))
+	http.HandleFunc("/config/update", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			configUpdateHandler(cfg, database)
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
 
-	// Full document listing
-	http.HandleFunc("/documents", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			ListDocumentsHandler(database, cfg.ReadDefaults)(w, r)
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte("pong"))
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
+
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			metricsHandler(database, cfg, startTime)
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
+
+	// Column families
+	http.HandleFunc("/families", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			listFamiliesHandler(database)(w, r)
 		case http.MethodPost:
-			PutHandler(database, cfg.WriteDefaults)(w, r)
+			createFamilyHandler(database)(w, r)
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
+
+	http.HandleFunc("/documents/keys", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			http.HandleFunc("/documents/keys", listKeysHandler(database, cfg.ReadDefaults))
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
+
+	// Full document listing
+	http.HandleFunc("/documents/bulk/get", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			bulkGetHandler(database, cfg.ReadDefaults)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
 	})
 
 	// Bulk operations
-	http.HandleFunc("/documents/bulk", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/documents/bulk/put", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			MultiPutHandler(database, cfg.WriteDefaults)(w, r)
+			bulkPutHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
 	})
 
-	http.HandleFunc("/documents/get", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/documents/list", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			MultiGetHandler(database, cfg.ReadDefaults)(w, r)
+			listDocumentsHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
 	})
 
 	// Single document operations with /documents/{key}
-	http.HandleFunc("/documents/", func(w http.ResponseWriter, r *http.Request) {
-		key := strings.TrimPrefix(r.URL.Path, "/documents/")
-		if key == "" {
-			http.Error(w, "missing document key", http.StatusBadRequest)
-			return
-		}
-
+	http.HandleFunc("/documents", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			GetHandler(database, cfg.ReadDefaults, key)(w, r)
+			documentGetHandler(database, cfg.ReadDefaults)(w, r)
 		case http.MethodDelete:
-			DeleteHandler(database, cfg.WriteDefaults, key)(w, r)
+			documentDeleteHandler(database, cfg.WriteDefaults)(w, r)
+		case http.MethodPost:
+			documentPutHandler(database, cfg.WriteDefaults)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
@@ -83,7 +111,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/insert", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			InsertHandler(database, cfg.WriteDefaults)(w, r)
+			documentInsertHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -91,7 +119,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/replace", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			ReplaceHandler(database, cfg.WriteDefaults)(w, r)
+			documentReplaceHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -100,7 +128,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	// Increment counter
 	http.HandleFunc("/documents/counters/delta", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			DeltaCountertHandler(database, cfg.WriteDefaults)(w, r)
+			deltaCountertHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -109,7 +137,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 	// List operations
 	http.HandleFunc("/documents/lists/push", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			ListPushHandler(database, cfg.WriteDefaults)(w, r)
+			listPushHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -117,7 +145,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/lists/unshift", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			ListUnshiftHandler(database, cfg.WriteDefaults)(w, r)
+			listUnshiftHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -125,7 +153,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/lists/pop", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			ListPopHandler(database, cfg.WriteDefaults)(w, r)
+			listPopHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -133,7 +161,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/lists/shift", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			ListShiftHandler(database, cfg.WriteDefaults)(w, r)
+			listShiftHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -141,7 +169,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/lists/range", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			ListRangeHandler(database, cfg.ReadDefaults)(w, r)
+			listRangeHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -149,7 +177,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/sets/add", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			SetAddHandler(database, cfg.WriteDefaults)(w, r)
+			setAddHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -157,7 +185,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/sets/remove", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			SetRemoveHandler(database, cfg.WriteDefaults)(w, r)
+			setRemoveHandler(database, cfg.WriteDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}
@@ -165,7 +193,7 @@ func SetupRoutes(database *db.DB, cfg config.AppConfig, startTime time.Time) {
 
 	http.HandleFunc("/documents/sets/contains", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			SetContainsHandler(database, cfg.ReadDefaults)(w, r)
+			setContainsHandler(database, cfg.ReadDefaults)(w, r)
 		} else {
 			respondWithNotAllowed(w)
 		}

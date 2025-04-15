@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func MetricsHandler(database *db.DB, cfg config.AppConfig, startTime time.Time) http.HandlerFunc {
+func metricsHandler(database *db.DB, cfg config.AppConfig, startTime time.Time) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		server, err := metrics.GetServerMetrics(cfg, startTime)
 		if err != nil {

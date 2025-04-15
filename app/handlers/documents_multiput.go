@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func MultiPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+func bulkPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Decode body: map of key -> { value, type }
 		var payload map[string]struct {

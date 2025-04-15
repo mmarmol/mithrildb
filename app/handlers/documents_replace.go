@@ -9,7 +9,7 @@ import (
 
 // ReplaceHandler handles POST /replace?key=...&cf=...&type=...
 // The document is only inserted if it doesn't already exist.
-func ReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
+func documentReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Required: key
 		key, err := getQueryParam(r, "key")

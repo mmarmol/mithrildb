@@ -15,7 +15,7 @@ type multiGetRequest struct {
 // MultiGetHandler handles POST /multiget
 // It receives a list of keys and returns a map of key to full document (with metadata).
 // Missing keys will be returned as null.
-func MultiGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
+func bulkGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req multiGetRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

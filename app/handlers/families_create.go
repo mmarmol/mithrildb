@@ -12,8 +12,8 @@ type createFamilyRequest struct {
 	Name string `json:"name"`
 }
 
-// CreateFamilyHandler handles POST /families
-func CreateFamilyHandler(database *db.DB) http.HandlerFunc {
+// createFamilyHandler handles POST /families
+func createFamilyHandler(database *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req createFamilyRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
