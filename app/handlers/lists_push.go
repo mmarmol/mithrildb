@@ -26,6 +26,7 @@ type listElementRequest struct {
 // @Produce      json
 // @Param        key  query     string              true  "Key of the list document"
 // @Param        cf   query     string              false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        body body      listElementRequest  true  "Element to add"
 // @Param        sync          query  boolean false "Write option: sync write to disk"
 // @Param        disable_wal   query  boolean false "Write option: disable write-ahead log"
@@ -43,6 +44,11 @@ func listPushHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			return
 		}
 		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+		expiration, err := getExpirationQueryParam(r)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
@@ -65,6 +71,7 @@ func listPushHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 				ColumnFamily: cf,
 				Key:          key,
 				WriteOptions: opts,
+				Expiration:   expiration,
 			},
 			Element: req.Element,
 		})

@@ -206,9 +206,6 @@ definitions:
     type: object
   model.Metadata:
     properties:
-      created_at:
-        description: When document was created
-        type: string
       expiration:
         description: TTL as Unix timestamp (0 = never)
         type: integer
@@ -362,6 +359,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Document type (e.g. 'json', 'counter', 'list')
         in: query
         name: type
@@ -449,6 +450,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Map of key to value/type entry
         in: body
         name: body
@@ -493,6 +498,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Delta value for increment or decrement
         in: body
         name: body
@@ -540,6 +549,10 @@ paths:
         in: query
         name: type
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: 'Write option: sync'
         in: query
         name: sync
@@ -686,6 +699,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: 'Write option: sync write to disk'
         in: query
         name: sync
@@ -736,6 +753,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Element to add
         in: body
         name: body
@@ -847,6 +868,10 @@ paths:
         name: key
         required: true
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: 'Column family (default: ''default'')'
         in: query
         name: cf
@@ -902,6 +927,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Element to insert at the beginning
         in: body
         name: body
@@ -959,6 +988,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Document type (e.g. 'json', 'counter', 'list')
         in: query
         name: type
@@ -1016,6 +1049,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Element to add to the set
         in: body
         name: body
@@ -1104,6 +1141,10 @@ paths:
         in: query
         name: cf
         type: string
+      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+        in: query
+        name: expiration
+        type: integer
       - description: Element to remove from the set
         in: body
         name: body

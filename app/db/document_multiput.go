@@ -11,7 +11,7 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) MultiPut(cf string, pairs map[string]interface{}, opts *grocksdb.WriteOptions) error {
+func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64, opts *grocksdb.WriteOptions) error {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return ErrInvalidColumnFamily
@@ -39,7 +39,7 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, opts *grocksdb.W
 				Rev:        uuid.NewString(),
 				Type:       model.DocTypeJSON, // All are json for now
 				UpdatedAt:  now,
-				Expiration: 0,
+				Expiration: expiration,
 			},
 		}
 

@@ -15,6 +15,7 @@ import (
 // @Accept       json
 // @Produce      json
 // @Param        key  query     string  true  "Key of the list document"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        cf   query     string  false "Column family (default: 'default')"
 // @Param        sync        query bool false "Write option: wait for sync"
 // @Param        disable_wal query bool false "Write option: disable WAL"
@@ -36,6 +37,11 @@ func listShiftHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 			mapAndRespondWithError(w, err)
 			return
 		}
+		expiration, err := getExpirationQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		opts := database.DefaultWriteOptions
 		if db.HasWriteOptions(r) {
@@ -47,6 +53,7 @@ func listShiftHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 			ColumnFamily: cf,
 			Key:          key,
 			WriteOptions: opts,
+			Expiration:   expiration,
 		})
 		if err != nil {
 			mapAndRespondWithError(w, err)

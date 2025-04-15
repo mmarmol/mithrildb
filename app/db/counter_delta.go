@@ -12,7 +12,7 @@ import (
 )
 
 // IncrementCounter increments a counter document atomically and returns the old and new values.
-func (db *DB) DeltaCounter(cf, key string, delta int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
+func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return 0, 0, ErrInvalidColumnFamily
@@ -53,13 +53,24 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, opts *grocksdb.WriteOpti
 			txn.Rollback()
 			return 0, 0, model.ErrInvalidCounterType
 		}
+		if model.IsExpired(doc.Meta) {
+			txn.Rollback()
+			return 0, 0, ErrKeyNotFound
+		}
 		oldVal, err = model.ParseCounterValue(doc.Value)
 		if err != nil {
 			txn.Rollback()
 			return 0, 0, err
 		}
+	} else {
+		return 0, 0, ErrKeyNotFound
 	}
 
+	err = model.ValidateExpiration(expiration)
+	if err != nil {
+		txn.Rollback()
+		return 0, 0, err
+	}
 	newVal = oldVal + delta
 	now := time.Now()
 	doc = model.Document{
@@ -69,7 +80,7 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, opts *grocksdb.WriteOpti
 			Rev:        uuid.NewString(),
 			Type:       model.DocTypeCounter,
 			UpdatedAt:  now,
-			Expiration: 0,
+			Expiration: expiration,
 		},
 	}
 

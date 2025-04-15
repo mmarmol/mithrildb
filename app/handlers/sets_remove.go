@@ -16,6 +16,7 @@ import (
 // @Produce      json
 // @Param        key     query     string  true   "Document key"
 // @Param        cf      query     string  false  "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        body    body      map[string]interface{}  true  "Element to remove from the set"
 // @Success      200     {object}  map[string]string        "Success message"
 // @Failure      400     {object}  handlers.ErrorResponse   "Invalid request or missing parameters"
@@ -32,6 +33,11 @@ func setRemoveHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 		key, err := getQueryParam(r, "key")
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		expiration, err := getExpirationQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
 			return
 		}
 
@@ -53,6 +59,7 @@ func setRemoveHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 			ColumnFamily: cf,
 			Key:          key,
 			WriteOptions: opts,
+			Expiration:   expiration,
 		},
 			req.Element)
 		if err != nil {

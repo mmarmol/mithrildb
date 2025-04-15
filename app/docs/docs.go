@@ -176,6 +176,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Document type (e.g. 'json', 'counter', 'list')",
                         "name": "type",
@@ -353,6 +359,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "description": "Map of key to value/type entry",
                         "name": "body",
                         "in": "body",
@@ -415,6 +427,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -486,6 +504,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Document type (json, counter, list, set)",
                         "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -707,6 +731,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "boolean",
                         "description": "Write option: sync write to disk",
                         "name": "sync",
@@ -779,6 +809,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -945,6 +981,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
@@ -1023,6 +1065,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -1110,6 +1158,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Document type (e.g. 'json', 'counter', 'list')",
                         "name": "type",
@@ -1191,6 +1245,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -1323,6 +1383,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -1774,10 +1840,6 @@ const docTemplate = `{
         "model.Metadata": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "description": "When document was created",
-                    "type": "string"
-                },
                 "expiration": {
                     "description": "TTL as Unix timestamp (0 = never)",
                     "type": "integer"

@@ -16,6 +16,7 @@ import (
 // @Produce      json
 // @Param        key  query     string  true  "Key of the list document"
 // @Param        cf   query     string  false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        sync          query  boolean false "Write option: sync write to disk"
 // @Param        disable_wal   query  boolean false "Write option: disable write-ahead log"
 // @Param        no_slowdown   query  boolean false "Write option: disable slowdown on write buffer full"
@@ -36,6 +37,11 @@ func listPopHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 			mapAndRespondWithError(w, err)
 			return
 		}
+		expiration, err := getExpirationQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
 
 		opts := database.DefaultWriteOptions
 		if db.HasWriteOptions(r) {
@@ -46,6 +52,7 @@ func listPopHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 		res, err := database.ListPop(db.ListOpOptions{
 			ColumnFamily: cf,
 			Key:          key,
+			Expiration:   expiration,
 			WriteOptions: opts,
 		})
 		if err != nil {

@@ -7,6 +7,8 @@ import (
 	"mithrildb/db"
 	"mithrildb/model"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 // ErrorResponse represents a standardized error message returned by the API.
@@ -69,6 +71,36 @@ func getDocTypeQueryParam(r *http.Request) string {
 		docType = model.DocTypeJSON
 	}
 	return docType
+}
+
+func getExpirationQueryParam(r *http.Request) (int64, error) {
+	param := r.URL.Query().Get("expiration")
+	return parseExpirationParam(param)
+}
+
+// ParseExpirationParam interprets TTL or timestamp based on Couchbase logic
+func parseExpirationParam(ttlStr string) (int64, error) {
+	if ttlStr == "" {
+		return 0, nil // no expiration
+	}
+	ttl, err := strconv.ParseInt(ttlStr, 10, 64)
+	if err != nil {
+		return 0, model.ErrInvalidExpiration
+	}
+
+	const thirtyDays = 60 * 60 * 24 * 30
+
+	if ttl < 1 {
+		return 0, nil
+	}
+
+	if ttl <= thirtyDays {
+		// Relative TTL
+		return time.Now().Unix() + ttl, nil
+	} else {
+		// Absolute timestamp
+		return ttl, nil
+	}
 }
 
 func mapErrorToResponse(err error) (int, string) {

@@ -16,6 +16,7 @@ import (
 // @Produce      json
 // @Param        key   query     string                 true  "Document key"
 // @Param        cf    query     string                 false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        type  query     string                 false "Document type (e.g. 'json', 'counter', 'list')"
 // @Param        cas   query     string                 false "CAS (revision) for concurrency control"
 // @Param        body  body      map[string]interface{} true  "New value for the document"
@@ -34,6 +35,11 @@ func documentReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig)
 			return
 		}
 		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+		expiration, err := getExpirationQueryParam(r)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
@@ -69,6 +75,7 @@ func documentReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig)
 			Value:        body.Value,
 			Cas:          cas,
 			Type:         docType,
+			Expiration:   expiration,
 			WriteOptions: opts,
 		})
 		if err != nil {

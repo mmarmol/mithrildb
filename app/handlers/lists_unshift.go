@@ -16,6 +16,7 @@ import (
 // @Produce      json
 // @Param        key   query     string                 true  "Key of the list document"
 // @Param        cf    query     string                 false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        body  body      listElementRequest     true  "Element to insert at the beginning"
 // @Param        sync        query bool false "Write option: wait for sync"
 // @Param        disable_wal query bool false "Write option: disable WAL"
@@ -33,6 +34,11 @@ func listUnshiftHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			return
 		}
 		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+		expiration, err := getExpirationQueryParam(r)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
@@ -57,6 +63,7 @@ func listUnshiftHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 				ColumnFamily: cf,
 				Key:          key,
 				WriteOptions: opts,
+				Expiration:   expiration,
 			},
 			Element: req.Element,
 		})

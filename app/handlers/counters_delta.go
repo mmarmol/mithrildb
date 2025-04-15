@@ -35,6 +35,7 @@ type incrementResponse struct {
 // @Produce      json
 // @Param        key   query     string               true  "Document key"
 // @Param        cf    query     string               false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        body  body      incrementRequest     true  "Delta value for increment or decrement"
 // @Success      200   {object}  incrementResponse
 // @Failure      400   {object}  handlers.ErrorResponse  "Invalid parameters or JSON body"
@@ -51,6 +52,12 @@ func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 		}
 
 		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+
+		expiration, err := getExpirationQueryParam(r)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
@@ -75,7 +82,7 @@ func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 			defer opts.Destroy()
 		}
 
-		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, opts)
+		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, expiration, opts)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

@@ -165,6 +165,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Document type (e.g. 'json', 'counter', 'list')",
                         "name": "type",
@@ -342,6 +348,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "description": "Map of key to value/type entry",
                         "name": "body",
                         "in": "body",
@@ -404,6 +416,12 @@
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -475,6 +493,12 @@
                         "type": "string",
                         "description": "Document type (json, counter, list, set)",
                         "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -696,6 +720,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "boolean",
                         "description": "Write option: sync write to disk",
                         "name": "sync",
@@ -768,6 +798,12 @@
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -934,6 +970,12 @@
                         "required": true
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
@@ -1012,6 +1054,12 @@
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -1099,6 +1147,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Document type (e.g. 'json', 'counter', 'list')",
                         "name": "type",
@@ -1180,6 +1234,12 @@
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -1312,6 +1372,12 @@
                         "type": "string",
                         "description": "Column family (default: 'default')",
                         "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
                         "in": "query"
                     },
                     {
@@ -1763,10 +1829,6 @@
         "model.Metadata": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "description": "When document was created",
-                    "type": "string"
-                },
                 "expiration": {
                     "description": "TTL as Unix timestamp (0 = never)",
                     "type": "integer"

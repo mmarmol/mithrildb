@@ -22,6 +22,7 @@ type SetElementRequest struct {
 // @Produce      json
 // @Param        key   query     string                  true  "Document key"
 // @Param        cf    query     string                  false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        body  body      handlers.SetElementRequest true "Element to add to the set"
 // @Success      200   {object}  map[string]string       "Operation successful"
 // @Failure      400   {object}  handlers.ErrorResponse  "Invalid parameters or body"
@@ -38,6 +39,11 @@ func setAddHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 		key, err := getQueryParam(r, "key")
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		expiration, err := getExpirationQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
 			return
 		}
 
@@ -57,6 +63,7 @@ func setAddHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			ColumnFamily: cf,
 			Key:          key,
 			WriteOptions: opts,
+			Expiration:   expiration,
 		},
 			req.Element,
 		)

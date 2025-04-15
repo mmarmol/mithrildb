@@ -16,6 +16,7 @@ import (
 // @Produce      json
 // @Param        key   query     string            true  "Document key"
 // @Param        cf    query     string            false "Column family (default: 'default')"
+// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param        type  query     string            false "Document type (e.g. 'json', 'counter', 'list')"
 // @Param        cas   query     string            false "CAS (revision) for concurrency control"
 // @Param        body  body      map[string]interface{}  true  "Document value (JSON-encoded)"
@@ -39,6 +40,12 @@ func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			mapAndRespondWithError(w, err)
 			return
 		}
+		expiration, err := getExpirationQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+
 		docType := getDocTypeQueryParam(r)
 		cas := getCasQueryParam(r)
 
@@ -70,6 +77,7 @@ func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			Value:        body.Value,
 			Cas:          cas,
 			Type:         docType,
+			Expiration:   expiration,
 			WriteOptions: opts,
 		}
 

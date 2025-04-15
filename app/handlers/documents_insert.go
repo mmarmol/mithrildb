@@ -15,6 +15,7 @@ import (
 // @Param key query string true "Document key"
 // @Param cf query string false "Column family (defaults to 'default')"
 // @Param type query string false "Document type (json, counter, list, set)"
+// @Param expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
 // @Param sync query bool false "Write option: sync"
 // @Param disable_wal query bool false "Write option: disable WAL"
 // @Param no_slowdown query bool false "Write option: no slowdown"
@@ -34,6 +35,12 @@ func documentInsertHandler(database *db.DB, defaults config.WriteOptionsConfig) 
 		}
 
 		cf, err := getCfQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+
+		expiration, err := getExpirationQueryParam(r)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
@@ -68,6 +75,7 @@ func documentInsertHandler(database *db.DB, defaults config.WriteOptionsConfig) 
 			Key:          key,
 			Value:        body.Value,
 			Type:         docType,
+			Expiration:   expiration,
 			WriteOptions: opts,
 		})
 
