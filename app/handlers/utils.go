@@ -74,7 +74,9 @@ func getDocTypeQueryParam(r *http.Request) string {
 func mapErrorToResponse(err error) (int, string) {
 	switch {
 	case errors.Is(err, db.ErrInvalidColumnFamily):
-		return http.StatusNotFound, err.Error()
+		return http.StatusBadRequest, err.Error()
+	case errors.Is(err, model.ErrInvalidDocumentKey):
+		return http.StatusBadRequest, err.Error()
 	case errors.Is(err, db.ErrKeyNotFound):
 		return http.StatusNotFound, err.Error()
 	case errors.Is(err, db.ErrRevisionMismatch):
