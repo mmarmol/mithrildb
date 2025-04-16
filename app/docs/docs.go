@@ -1433,6 +1433,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/documents/touch": {
+            "post": {
+                "description": "Updates the expiration time of an existing document without modifying its content. Fails if the key does not exist.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Update document expiration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document key",
+                        "name": "key",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column family (default: 'default')",
+                        "name": "cf",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "name": "expiration",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Document"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Key not found or already expired",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/families": {
             "get": {
                 "description": "Retrieves the names of all available column families.",

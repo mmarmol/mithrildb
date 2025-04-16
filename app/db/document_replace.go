@@ -11,24 +11,18 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// Replace stores a Document only if the key already exists (atomic using transaction).
-func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
+// updateDocumentIfExists executes a transactional update over an existing document.
+func (db *DB) updateDocumentIfExists(
+	opts PutOptions,
+	modify func(doc *model.Document) error,
+) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
 
-	err := model.ValidateDocumentKey(opts.Key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return nil, err
-	}
-
-	if opts.Value == nil {
-		return nil, ErrNilValue
-	}
-
-	if err := model.ValidateValue(opts.Value, opts.Type); err != nil {
-		return nil, fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
 	}
 
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
@@ -55,9 +49,8 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 		return nil, ErrKeyNotFound
 	}
 
-	raw := val.Data()
 	var existing model.Document
-	if err := json.Unmarshal(raw, &existing); err != nil {
+	if err := json.Unmarshal(val.Data(), &existing); err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to parse document: %w", err)
 	}
@@ -67,25 +60,12 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 		return nil, ErrKeyNotFound
 	}
 
-	err = model.ValidateExpiration(opts.Expiration)
-	if err != nil {
+	if err := modify(&existing); err != nil {
 		txn.Rollback()
 		return nil, err
 	}
 
-	now := time.Now()
-	doc := model.Document{
-		Key:   opts.Key,
-		Value: opts.Value,
-		Meta: model.Metadata{
-			Rev:        uuid.NewString(),
-			Type:       opts.Type,
-			UpdatedAt:  now,
-			Expiration: opts.Expiration,
-		},
-	}
-
-	data, err := json.Marshal(doc)
+	data, err := json.Marshal(existing)
 	if err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to serialize document: %w", err)
@@ -93,7 +73,7 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 
 	if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
 		txn.Rollback()
-		return nil, fmt.Errorf("failed to replace document: %w", err)
+		return nil, fmt.Errorf("failed to write document: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {
@@ -101,5 +81,39 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return &doc, nil
+	return &existing, nil
+}
+
+// Replace stores a Document only if the key already exists.
+func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
+	return db.updateDocumentIfExists(opts, func(doc *model.Document) error {
+		if opts.Value == nil {
+			return ErrNilValue
+		}
+		if err := model.ValidateValue(opts.Value, opts.Type); err != nil {
+			return fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
+		}
+		if err := model.ValidateExpiration(opts.Expiration); err != nil {
+			return err
+		}
+		doc.Value = opts.Value
+		doc.Meta.Type = opts.Type
+		doc.Meta.Expiration = opts.Expiration
+		doc.Meta.UpdatedAt = time.Now().UTC()
+		doc.Meta.Rev = uuid.NewString()
+		return nil
+	})
+}
+
+// Touch updates the expiration of a document without modifying its content.
+func (db *DB) Touch(opts PutOptions) (*model.Document, error) {
+	return db.updateDocumentIfExists(opts, func(doc *model.Document) error {
+		if err := model.ValidateExpiration(opts.Expiration); err != nil {
+			return err
+		}
+		doc.Meta.Expiration = opts.Expiration
+		doc.Meta.UpdatedAt = time.Now().UTC()
+		doc.Meta.Rev = uuid.NewString()
+		return nil
+	})
 }

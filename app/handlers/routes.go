@@ -140,6 +140,14 @@ func SetupRoutes(database *db.DB, cfg *config.AppConfig, startTime time.Time) {
 		}
 	})
 
+	http.HandleFunc("/documents/touch", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			documentTouchHandler(database, cfg.WriteDefaults)(w, r)
+		} else {
+			respondWithNotAllowed(w)
+		}
+	})
+
 	// Increment counter
 	http.HandleFunc("/documents/counters/delta", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
