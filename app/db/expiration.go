@@ -2,7 +2,9 @@ package db
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/linxGnu/grocksdb"
@@ -67,4 +69,70 @@ func (db *DB) ReplaceTTLInTxn(txn *grocksdb.Transaction, cfName, key string, exp
 		return err
 	}
 	return nil
+}
+
+func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
+	handle, ok := db.Families[CFSystemExpiration]
+	if !ok {
+		return 0, fmt.Errorf("expiration index not found")
+	}
+
+	readOpts := grocksdb.NewDefaultReadOptions()
+	readOpts.SetFillCache(false)
+	defer readOpts.Destroy()
+
+	iter := db.TransactionDB.NewIteratorCF(readOpts, handle)
+	defer iter.Close()
+
+	// Empieza a leer desde la clave más baja posible (timestamp=0)
+	prefix := fmt.Sprintf("%010d:", 0)
+	iter.Seek([]byte(prefix))
+
+	count := 0
+
+	for ; iter.Valid(); iter.Next() {
+		if count >= limit {
+			break
+		}
+
+		keySlice := iter.Key()
+		ttlKey := append([]byte{}, keySlice.Data()...) // copiar para evitar invalidación
+		keySlice.Free()                                // liberar slice de RocksDB
+
+		// Esperado: "timestamp:cf:key"
+		parts := bytes.SplitN(ttlKey, []byte(":"), 3)
+		if len(parts) < 3 {
+			continue
+		}
+
+		ts, err := strconv.ParseInt(string(parts[0]), 10, 64)
+		if err != nil || ts > now {
+			break // ya no hay más expirados
+		}
+
+		cfName := string(parts[1])
+		docKey := string(parts[2])
+
+		doc, err := db.Get(cfName, docKey, readOpts)
+		if err != nil {
+			if !errors.Is(err, ErrKeyNotFound) {
+				log.Printf("[expiration] failed to read %s:%s: %v", cfName, docKey, err)
+				continue
+			}
+			// Documento ya fue borrado, seguimos con limpieza de TTL
+		} else {
+			if doc.Meta.Expiration != ts {
+				continue // documento fue tocado o actualizado
+			}
+		}
+
+		if err := db.DeleteDirect(cfName, docKey, db.DefaultWriteOptions); err != nil {
+			log.Printf("[expiration] failed to delete %s:%s: %v", cfName, docKey, err)
+			continue
+		}
+
+		count++
+	}
+
+	return count, nil
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"mithrildb/config"
 	"mithrildb/db"
+	"mithrildb/expiration"
 	"mithrildb/handlers"
 	"net/http"
 	"os"
@@ -35,8 +36,14 @@ func main() {
 	database := db.NewDB(rocksdb, families, cfg)
 	defer database.Close() // Este cierre se encarga de cerrar tanto la base como los CFs
 
+	expirer := expiration.NewService(database, expiration.Config{
+		TickInterval: time.Duration(30) * time.Second,
+		MaxPerCycle:  500,
+	})
+	expirer.Start()
+
 	// Setup HTTP routes
-	handlers.SetupRoutes(database, &cfg, startTime)
+	handlers.SetupRoutes(database, expirer, &cfg, startTime)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	server := &http.Server{Addr: addr}

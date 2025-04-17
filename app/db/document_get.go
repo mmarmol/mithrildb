@@ -15,18 +15,18 @@ func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (*model.Document, 
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
-	err := model.ValidateDocumentKey(key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(key); err != nil {
 		return nil, err
 	}
+
 	value, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
 	if err != nil {
 		return nil, err
 	}
 	defer value.Free()
 
-	if value.Size() == 0 {
-		return nil, nil // Key not found
+	if !value.Exists() || value.Size() == 0 {
+		return nil, ErrKeyNotFound
 	}
 
 	var doc model.Document
@@ -35,7 +35,7 @@ func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (*model.Document, 
 	}
 
 	if model.IsExpired(doc.Meta) {
-		return nil, nil
+		return nil, ErrKeyNotFound
 	}
 
 	return &doc, nil

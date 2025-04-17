@@ -49,10 +49,6 @@ func documentGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http
 			mapAndRespondWithError(w, err)
 			return
 		}
-		if doc == nil {
-			respondWithError(w, http.StatusNotFound, "Key not found")
-			return
-		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(doc)

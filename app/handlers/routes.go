@@ -3,6 +3,7 @@ package handlers
 import (
 	"mithrildb/config"
 	"mithrildb/db"
+	"mithrildb/expiration"
 	"net/http"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 )
 
 // SetupRoutes registers all HTTP routes with their handlers using a RESTful structure.
-func SetupRoutes(database *db.DB, cfg *config.AppConfig, startTime time.Time) {
+func SetupRoutes(database *db.DB, expirer *expiration.Service, cfg *config.AppConfig, startTime time.Time) {
 
 	http.Handle("/api/", httpSwagger.WrapHandler)
 
@@ -56,7 +57,7 @@ func SetupRoutes(database *db.DB, cfg *config.AppConfig, startTime time.Time) {
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			metricsHandler(database, cfg, startTime)(w, r)
+			metricsHandler(database, expirer, cfg, startTime)(w, r)
 		default:
 			respondWithNotAllowed(w)
 		}
