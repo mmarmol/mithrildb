@@ -17,18 +17,22 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64
 		return ErrInvalidColumnFamily
 	}
 
-	batch := grocksdb.NewWriteBatch()
-	defer batch.Destroy()
+	txnOpts := grocksdb.NewDefaultTransactionOptions()
+	txnOpts.SetSetSnapshot(true)
+	defer txnOpts.Destroy()
+
+	txn := db.TransactionDB.TransactionBegin(opts, txnOpts, nil)
+	defer txn.Destroy()
 
 	now := time.Now()
 
 	for k, rawValue := range pairs {
-		// Validate value type (defaults to json for now)
-		err := model.ValidateDocumentKey(k)
-		if err != nil {
-			return err
+		if err := model.ValidateDocumentKey(k); err != nil {
+			txn.Rollback()
+			return fmt.Errorf("invalid key '%s': %w", k, err)
 		}
 		if err := model.ValidateValue(rawValue, model.DocTypeJSON); err != nil {
+			txn.Rollback()
 			return fmt.Errorf("invalid value for key '%s': %w", k, err)
 		}
 
@@ -37,7 +41,7 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64
 			Value: rawValue,
 			Meta: model.Metadata{
 				Rev:        uuid.NewString(),
-				Type:       model.DocTypeJSON, // All are json for now
+				Type:       model.DocTypeJSON,
 				UpdatedAt:  now,
 				Expiration: expiration,
 			},
@@ -45,11 +49,25 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64
 
 		data, err := json.Marshal(doc)
 		if err != nil {
+			txn.Rollback()
 			return fmt.Errorf("failed to encode document for key '%s': %w", k, err)
 		}
 
-		batch.PutCF(handle, []byte(k), data)
+		if err := txn.PutCF(handle, []byte(k), data); err != nil {
+			txn.Rollback()
+			return fmt.Errorf("failed to write document for key '%s': %w", k, err)
+		}
+
+		if err := db.ReplaceTTLInTxn(txn, cf, k, expiration); err != nil {
+			txn.Rollback()
+			return fmt.Errorf("failed to write TTL for key '%s': %w", k, err)
+		}
 	}
 
-	return db.TransactionDB.Write(opts, batch)
+	if err := txn.Commit(); err != nil {
+		txn.Rollback()
+		return fmt.Errorf("failed to commit MultiPut: %w", err)
+	}
+
+	return nil
 }

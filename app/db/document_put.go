@@ -18,7 +18,7 @@ type PutOptions struct {
 	Value        interface{}            // Document value (string, map, etc.)
 	Cas          string                 // Optional revision for optimistic locking
 	Type         string                 // Document type (json, counter, etc.)
-	Expiration   int64                  // Optional TTL (Unix timestamp)
+	Expiration   *int64                 // Optional TTL (Unix timestamp)
 	WriteOptions *grocksdb.WriteOptions // RocksDB write options
 }
 
@@ -29,40 +29,32 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		return nil, ErrInvalidColumnFamily
 	}
 
-	err := model.ValidateDocumentKey(opts.Key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return nil, err
 	}
-
 	if opts.Value == nil {
 		return nil, ErrNilValue
 	}
-
 	if err := model.ValidateValue(opts.Value, opts.Type); err != nil {
 		return nil, fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
 	}
+	if opts.Expiration != nil {
+		if err := model.ValidateExpiration(*opts.Expiration); err != nil {
+			return nil, err
+		}
+	}
 
-	// Transaction options only if CAS is provided
-	var txn *grocksdb.Transaction
-	var writeOpts *grocksdb.WriteOptions
-	var txnOpts *grocksdb.TransactionOptions
+	// Always use transaction now
+	txnOpts := grocksdb.NewDefaultTransactionOptions()
+	txnOpts.SetSetSnapshot(true)
+	txnOpts.SetLockTimeout(1000)
+	defer txnOpts.Destroy()
 
-	// Prepare write options
-	writeOpts = opts.WriteOptions // Use the write options passed in opts
+	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
+	defer txn.Destroy()
 
-	// If CAS is provided, handle it within a transaction
+	// Check CAS if provided
 	if opts.Cas != "" {
-		// Set up transaction options
-		txnOpts = grocksdb.NewDefaultTransactionOptions()
-		txnOpts.SetSetSnapshot(true) // Take a snapshot to avoid reading inconsistencies
-		txnOpts.SetLockTimeout(1000) // Set lock timeout (e.g., 1 second)
-		defer txnOpts.Destroy()
-
-		// Start a new transaction
-		txn = db.TransactionDB.TransactionBegin(writeOpts, txnOpts, nil)
-		defer txn.Destroy()
-
-		// Check if the document exists and its revision matches the CAS
 		readOpts := grocksdb.NewDefaultReadOptions()
 		readOpts.SetFillCache(false)
 		defer readOpts.Destroy()
@@ -74,31 +66,26 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		}
 		defer val.Free()
 
-		// Only check CAS if value exists
 		if val.Size() > 0 {
-			var existingDoc model.Document
-			if err := json.Unmarshal(val.Data(), &existingDoc); err != nil {
+			var existing model.Document
+			if err := json.Unmarshal(val.Data(), &existing); err != nil {
 				txn.Rollback()
 				return nil, fmt.Errorf("failed to unmarshal existing document: %w", err)
 			}
-			if existingDoc.Meta.Rev != opts.Cas {
+			if existing.Meta.Rev != opts.Cas {
 				txn.Rollback()
 				return nil, ErrRevisionMismatch
 			}
 		}
-	} else {
-		// No CAS, no need for a transaction, use direct Put
-		txn = nil
 	}
 
-	err = model.ValidateExpiration(opts.Expiration)
-	if err != nil {
-		txn.Rollback()
-		return nil, err
-	}
-
-	// Prepare the new document
+	// Prepare new document
 	now := time.Now()
+	expiration := int64(0)
+	if opts.Expiration != nil {
+		expiration = *opts.Expiration
+	}
+
 	doc := model.Document{
 		Key:   opts.Key,
 		Value: opts.Value,
@@ -106,36 +93,32 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 			Rev:        uuid.NewString(),
 			Type:       opts.Type,
 			UpdatedAt:  now,
-			Expiration: opts.Expiration,
+			Expiration: expiration,
 		},
 	}
 
-	// Serialize the document into JSON
 	data, err := json.Marshal(doc)
 	if err != nil {
+		txn.Rollback()
 		return nil, fmt.Errorf("error marshaling document: %w", err)
 	}
 
-	// If using transaction, do the Put in the transaction
-	if txn != nil {
-		if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
-			// If put fails, rollback the transaction
+	if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to put document: %w", err)
+	}
+
+	if opts.Expiration != nil {
+		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
 			txn.Rollback()
-			return nil, fmt.Errorf("failed to put document in transaction: %w", err)
-		}
-		// Commit transaction after successful put
-		if err := txn.Commit(); err != nil {
-			txn.Rollback() // Ensure rollback on commit failure
-			return nil, fmt.Errorf("failed to commit transaction: %w", err)
-		}
-	} else {
-		// If no transaction, do the Put directly
-		err = db.TransactionDB.PutCF(writeOpts, handle, []byte(opts.Key), data)
-		if err != nil {
-			return nil, fmt.Errorf("failed to put document: %w", err)
+			return nil, fmt.Errorf("failed to update TTL index: %w", err)
 		}
 	}
 
-	// Return the stored document
+	if err := txn.Commit(); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return &doc, nil
 }

@@ -5,6 +5,7 @@ import (
 	"mithrildb/config"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/linxGnu/grocksdb"
@@ -16,6 +17,7 @@ type DB struct {
 	DefaultReadOptions  *grocksdb.ReadOptions
 	DefaultWriteOptions *grocksdb.WriteOptions
 	Families            map[string]*grocksdb.ColumnFamilyHandle
+	mu                  sync.Mutex
 }
 
 // RocksDBOptions contiene las opciones de configuración para RocksDB.

@@ -73,34 +73,35 @@ func getDocTypeQueryParam(r *http.Request) string {
 	return docType
 }
 
-func getExpirationQueryParam(r *http.Request) (int64, error) {
+func getExpirationQueryParam(r *http.Request) (*int64, error) {
 	param := r.URL.Query().Get("expiration")
 	return parseExpirationParam(param)
 }
 
 // ParseExpirationParam interprets TTL or timestamp based on Couchbase logic
-func parseExpirationParam(ttlStr string) (int64, error) {
+func parseExpirationParam(ttlStr string) (*int64, error) {
 	if ttlStr == "" {
-		return 0, nil // no expiration
+		return nil, nil // no expiration param sent
 	}
 	ttl, err := strconv.ParseInt(ttlStr, 10, 64)
 	if err != nil {
-		return 0, model.ErrInvalidExpiration
+		return nil, model.ErrInvalidExpiration
 	}
 
 	const thirtyDays = 60 * 60 * 24 * 30
 
 	if ttl < 1 {
-		return 0, nil
+		zero := int64(0)
+		return &zero, nil
 	}
 
+	var exp int64
 	if ttl <= thirtyDays {
-		// Relative TTL
-		return time.Now().Unix() + ttl, nil
+		exp = time.Now().Unix() + ttl
 	} else {
-		// Absolute timestamp
-		return ttl, nil
+		exp = ttl
 	}
+	return &exp, nil
 }
 
 func mapErrorToResponse(err error) (int, string) {

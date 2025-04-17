@@ -105,7 +105,7 @@ func ValidateDocumentKey(key string) error {
 
 func IsExpired(meta Metadata) bool {
 	if meta.Expiration <= 0 {
-		return false // 0 o negativo significa "sin expiración"
+		return false // 0 o negative "no expiration"
 	}
 	return time.Now().Unix() > meta.Expiration
 }

@@ -82,7 +82,7 @@ func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 			defer opts.Destroy()
 		}
 
-		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, expiration, opts)
+		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, *expiration, opts)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

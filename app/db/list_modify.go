@@ -14,16 +14,18 @@ type ListOpOptions struct {
 	ColumnFamily string
 	Key          string
 	WriteOptions *grocksdb.WriteOptions
-	Expiration   int64
+	Expiration   *int64
 }
 
-func (db *DB) withListTransaction(opts ListOpOptions, modifier func([]interface{}) ([]interface{}, interface{}, error)) (interface{}, error) {
+func (db *DB) withListTransaction(
+	opts ListOpOptions,
+	modifier func([]interface{}) ([]interface{}, interface{}, error),
+) (interface{}, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
-	err := model.ValidateDocumentKey(opts.Key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return nil, err
 	}
 
@@ -78,13 +80,13 @@ func (db *DB) withListTransaction(opts ListOpOptions, modifier func([]interface{
 	doc.Meta.Rev = uuid.NewString()
 	doc.Meta.UpdatedAt = time.Now()
 
-	err = model.ValidateExpiration(opts.Expiration)
-	if err != nil {
-		txn.Rollback()
-		return nil, err
+	if opts.Expiration != nil {
+		if err := model.ValidateExpiration(*opts.Expiration); err != nil {
+			txn.Rollback()
+			return nil, err
+		}
+		doc.Meta.Expiration = *opts.Expiration
 	}
-
-	doc.Meta.Expiration = opts.Expiration
 
 	data, err := json.Marshal(doc)
 	if err != nil {
@@ -95,6 +97,13 @@ func (db *DB) withListTransaction(opts ListOpOptions, modifier func([]interface{
 	if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to write document: %w", err)
+	}
+
+	if opts.Expiration != nil {
+		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
+			txn.Rollback()
+			return nil, fmt.Errorf("failed to update TTL index: %w", err)
+		}
 	}
 
 	if err := txn.Commit(); err != nil {

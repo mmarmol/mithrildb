@@ -76,6 +76,13 @@ func (db *DB) updateDocumentIfExists(
 		return nil, fmt.Errorf("failed to write document: %w", err)
 	}
 
+	if opts.Expiration != nil {
+		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
+			txn.Rollback()
+			return nil, fmt.Errorf("failed to update TTL index: %w", err)
+		}
+	}
+
 	if err := txn.Commit(); err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
@@ -93,12 +100,14 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 		if err := model.ValidateValue(opts.Value, opts.Type); err != nil {
 			return fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
 		}
-		if err := model.ValidateExpiration(opts.Expiration); err != nil {
-			return err
+		if opts.Expiration != nil {
+			if err := model.ValidateExpiration(*opts.Expiration); err != nil {
+				return err
+			}
+			doc.Meta.Expiration = *opts.Expiration
 		}
 		doc.Value = opts.Value
 		doc.Meta.Type = opts.Type
-		doc.Meta.Expiration = opts.Expiration
 		doc.Meta.UpdatedAt = time.Now().UTC()
 		doc.Meta.Rev = uuid.NewString()
 		return nil
@@ -108,10 +117,13 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 // Touch updates the expiration of a document without modifying its content.
 func (db *DB) Touch(opts PutOptions) (*model.Document, error) {
 	return db.updateDocumentIfExists(opts, func(doc *model.Document) error {
-		if err := model.ValidateExpiration(opts.Expiration); err != nil {
+		if opts.Expiration == nil {
+			return model.ErrInvalidExpiration
+		}
+		if err := model.ValidateExpiration(*opts.Expiration); err != nil {
 			return err
 		}
-		doc.Meta.Expiration = opts.Expiration
+		doc.Meta.Expiration = *opts.Expiration
 		doc.Meta.UpdatedAt = time.Now().UTC()
 		doc.Meta.Rev = uuid.NewString()
 		return nil

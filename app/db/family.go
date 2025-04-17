@@ -1,6 +1,8 @@
 package db
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -18,21 +20,42 @@ func (db *DB) ListFamilyNames() (usr, sys []string) {
 	return splitCFNamesByType(names)
 }
 
-func (db *DB) CreateFamily(name string) error {
-	if _, exists := db.Families[name]; exists {
+func (db *DB) CreateFamily(cfName string) error {
+	if _, exists := db.Families[cfName]; exists {
 		return ErrFamilyExists
 	}
 
 	opts := grocksdb.NewDefaultOptions()
 	defer opts.Destroy()
 
-	handle, err := db.TransactionDB.CreateColumnFamily(opts, name)
+	handle, err := db.TransactionDB.CreateColumnFamily(opts, cfName)
 	if err != nil {
 		return err
 	}
 
-	db.Families[name] = handle
+	db.Families[cfName] = handle
 	return nil
+}
+
+// GetOrCreateSystemIndex ensures a system-level CF is available (created if missing).
+func (db *DB) GetOrCreateSystemIndex(cfName string) (*grocksdb.ColumnFamilyHandle, error) {
+	if handle, ok := db.Families[cfName]; ok {
+		return handle, nil
+	}
+
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if err := db.CreateFamily(cfName); err != nil {
+		if !errors.Is(err, ErrFamilyExists) {
+			return nil, err
+		}
+	}
+
+	if handle, ok := db.Families[cfName]; ok {
+		return handle, nil
+	}
+	return nil, fmt.Errorf("column family %q not available after creation", cfName)
 }
 
 var userCFRegex = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)

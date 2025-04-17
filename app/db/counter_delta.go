@@ -17,12 +17,10 @@ func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocks
 	if !ok {
 		return 0, 0, ErrInvalidColumnFamily
 	}
-	err = model.ValidateDocumentKey(key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(key); err != nil {
 		return 0, 0, err
 	}
 
-	// Prepare transaction
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()
@@ -35,7 +33,6 @@ func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocks
 	readOpts.SetFillCache(false)
 	defer readOpts.Destroy()
 
-	// Read current value
 	val, err := txn.GetWithCF(readOpts, handle, []byte(key))
 	if err != nil {
 		txn.Rollback()
@@ -66,13 +63,14 @@ func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocks
 		return 0, 0, ErrKeyNotFound
 	}
 
-	err = model.ValidateExpiration(expiration)
-	if err != nil {
+	if err := model.ValidateExpiration(expiration); err != nil {
 		txn.Rollback()
 		return 0, 0, err
 	}
+
 	newVal = oldVal + delta
 	now := time.Now()
+
 	doc = model.Document{
 		Key:   key,
 		Value: newVal,
@@ -93,6 +91,12 @@ func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocks
 	if err := txn.PutCF(handle, []byte(key), data); err != nil {
 		txn.Rollback()
 		return 0, 0, fmt.Errorf("failed to update counter: %w", err)
+	}
+
+	// 🔁 Update TTL index
+	if err := db.ReplaceTTLInTxn(txn, cf, key, expiration); err != nil {
+		txn.Rollback()
+		return 0, 0, fmt.Errorf("failed to update TTL index: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

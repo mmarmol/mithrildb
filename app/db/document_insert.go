@@ -18,35 +18,33 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 		return nil, ErrInvalidColumnFamily
 	}
 
-	err := model.ValidateDocumentKey(opts.Key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return nil, err
 	}
-
 	if opts.Value == nil {
 		return nil, ErrNilValue
 	}
-
 	if err := model.ValidateValue(opts.Value, opts.Type); err != nil {
 		return nil, fmt.Errorf("invalid value for type %s: %w", opts.Type, err)
 	}
+	if opts.Expiration != nil {
+		if err := model.ValidateExpiration(*opts.Expiration); err != nil {
+			return nil, err
+		}
+	}
 
-	// Create default transaction options with snapshot
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()
 
-	// Start transaction
 	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
-	// Set snapshot and read options
 	readOpts := grocksdb.NewDefaultReadOptions()
 	readOpts.SetSnapshot(txn.GetSnapshot())
 	readOpts.SetFillCache(false)
 	defer readOpts.Destroy()
 
-	// Read inside the transaction
 	val, err := txn.GetWithCF(readOpts, handle, []byte(opts.Key))
 	if err != nil {
 		txn.Rollback()
@@ -68,14 +66,12 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 		}
 	}
 
-	err = model.ValidateExpiration(opts.Expiration)
-	if err != nil {
-		txn.Rollback()
-		return nil, err
+	now := time.Now()
+	expiration := int64(0)
+	if opts.Expiration != nil {
+		expiration = *opts.Expiration
 	}
 
-	// Build new document
-	now := time.Now()
 	doc := model.Document{
 		Key:   opts.Key,
 		Value: opts.Value,
@@ -83,7 +79,7 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 			Rev:        uuid.NewString(),
 			Type:       opts.Type,
 			UpdatedAt:  now,
-			Expiration: opts.Expiration,
+			Expiration: expiration,
 		},
 	}
 
@@ -93,13 +89,18 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 		return nil, fmt.Errorf("failed to serialize document: %w", err)
 	}
 
-	// Put the new document
 	if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to insert document: %w", err)
 	}
 
-	// Commit the transaction
+	if opts.Expiration != nil {
+		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
+			txn.Rollback()
+			return nil, fmt.Errorf("failed to update TTL index: %w", err)
+		}
+	}
+
 	if err := txn.Commit(); err != nil {
 		txn.Rollback()
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
