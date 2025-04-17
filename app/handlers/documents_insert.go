@@ -15,7 +15,7 @@ import (
 // @Param key query string true "Document key"
 // @Param cf query string false "Column family (defaults to 'default')"
 // @Param type query string false "Document type (json, counter, list, set)"
-// @Param        expiration  query  int  false  "Optional expiration. TTL in seconds (<= 30d) or absolute Unix timestamp (> 30d). Omit to keep existing expiration."
+// @Param        expiration  query  int  false  "Optional expiration. TTL in seconds (<= 30d) or absolute Unix timestamp (> 30d). Omit to store without expiration."
 // @Param sync query bool false "Write option: sync"
 // @Param disable_wal query bool false "Write option: disable WAL"
 // @Param no_slowdown query bool false "Write option: no slowdown"

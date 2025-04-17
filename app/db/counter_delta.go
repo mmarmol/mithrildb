@@ -12,7 +12,7 @@ import (
 )
 
 // IncrementCounter increments a counter document atomically and returns the old and new values.
-func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
+func (db *DB) DeltaCounter(cf, key string, delta int64, expiration *int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return 0, 0, ErrInvalidColumnFamily
@@ -63,23 +63,20 @@ func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocks
 		return 0, 0, ErrKeyNotFound
 	}
 
-	if err := model.ValidateExpiration(expiration); err != nil {
-		txn.Rollback()
-		return 0, 0, err
-	}
-
 	newVal = oldVal + delta
 	now := time.Now()
 
-	doc = model.Document{
-		Key:   key,
-		Value: newVal,
-		Meta: model.Metadata{
-			Rev:        uuid.NewString(),
-			Type:       model.DocTypeCounter,
-			UpdatedAt:  now,
-			Expiration: expiration,
-		},
+	// Build updated document
+	doc.Value = newVal
+	doc.Meta.Rev = uuid.NewString()
+	doc.Meta.UpdatedAt = now
+
+	if expiration != nil {
+		if err := model.ValidateExpiration(*expiration); err != nil {
+			txn.Rollback()
+			return 0, 0, err
+		}
+		doc.Meta.Expiration = *expiration
 	}
 
 	data, err := json.Marshal(doc)
@@ -93,10 +90,12 @@ func (db *DB) DeltaCounter(cf, key string, delta, expiration int64, opts *grocks
 		return 0, 0, fmt.Errorf("failed to update counter: %w", err)
 	}
 
-	// 🔁 Update TTL index
-	if err := db.ReplaceTTLInTxn(txn, cf, key, expiration); err != nil {
-		txn.Rollback()
-		return 0, 0, fmt.Errorf("failed to update TTL index: %w", err)
+	// Update TTL only if provided
+	if expiration != nil {
+		if err := db.ReplaceTTLInTxn(txn, cf, key, *expiration); err != nil {
+			txn.Rollback()
+			return 0, 0, fmt.Errorf("failed to update TTL index: %w", err)
+		}
 	}
 
 	if err := txn.Commit(); err != nil {

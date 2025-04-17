@@ -57,12 +57,6 @@ func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 			return
 		}
 
-		expiration, err := getExpirationQueryParam(r)
-		if err != nil {
-			mapAndRespondWithError(w, err)
-			return
-		}
-
 		// Parse JSON body with delta
 		var req incrementRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -82,7 +76,13 @@ func deltaCountertHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 			defer opts.Destroy()
 		}
 
-		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, *expiration, opts)
+		expiration, err := getExpirationQueryParam(r)
+		if err != nil {
+			mapAndRespondWithError(w, err)
+			return
+		}
+
+		oldVal, newVal, err := database.DeltaCounter(cf, key, req.Delta, expiration, opts)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
