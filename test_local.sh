@@ -279,6 +279,53 @@ RESP=$(curl -s "http://localhost:$PORT/documents/sets/contains?cf=logs&key=myset
 echo "Contains green? $RESP"
 echo "$RESP" | grep -q '"contains":false' && echo "✅ 'green' removed" || echo "❌ 'green' still present"
 
+# -----------------------------------
+# EXPIRATION + TOUCH
+# -----------------------------------
+echo
+echo "🔹 Insert document with short expiration"
+SHORT_EXP=$(( $(date +%s) + 2 ))
+curl -s -X POST "http://localhost:$PORT/documents/insert?cf=logs&key=expiring-doc&expiration=$SHORT_EXP" \
+     -H "Content-Type: application/json" -d '{"value": "temp"}' >/dev/null
+echo "✅ Document inserted with expiration in 2 seconds"
+
+echo "⏳ Waiting for expiration (3s)..."
+sleep 3
+
+echo "🔹 GET expired document (should be gone)"
+RESP=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/documents?cf=logs&key=expiring-doc")
+[ "$RESP" = "404" ] && echo "✅ Expired document not found" || echo "❌ Expired document was still found"
+
+echo
+echo "🔹 Insert document without expiration"
+curl -s -X POST "http://localhost:$PORT/documents?cf=logs&key=touch-me" \
+     -H "Content-Type: application/json" -d '{"value": "survive"}' >/dev/null
+echo "✅ Document created"
+
+
+echo "🔹 Touch to set expiration in 5 seconds"
+FUTURE_EXP=$(( $(date +%s) + 5 ))
+echo "➡️ Touching with expiration = $FUTURE_EXP"
+TOUCH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  "http://localhost:$PORT/documents/touch?cf=logs&key=touch-me&expiration=$FUTURE_EXP")
+
+echo "🔸 Status: $TOUCH_STATUS"
+if [ "$TOUCH_STATUS" = "200" ]; then
+  echo "✅ Touch succeeded"
+else
+  echo "❌ Touch failed"
+  exit 1
+fi
+
+echo "⏳ Waiting for 3 seconds (should still exist)"
+sleep 3
+RESP=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/documents?cf=logs&key=touch-me")
+[ "$RESP" = "200" ] && echo "✅ Document still present" || (echo "❌ Document expired too early"; exit 1)
+
+echo "⏳ Waiting 3 more seconds (should now expire)"
+sleep 3
+RESP=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/documents?cf=logs&key=touch-me")
+[ "$RESP" = "404" ] && echo "✅ Document expired as expected" || echo "❌ Document did not expire"
 
 echo
 echo "✅ All tests completed successfully."
