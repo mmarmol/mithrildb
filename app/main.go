@@ -36,10 +36,12 @@ func main() {
 	database := db.NewDB(rocksdb, families, cfg)
 	defer database.Close() // Este cierre se encarga de cerrar tanto la base como los CFs
 
-	expirer := expiration.NewService(database, expiration.Config{
-		TickInterval: time.Duration(30) * time.Second,
-		MaxPerCycle:  500,
-	})
+	expCfg, err := expiration.BuildFromAppConfig(cfg)
+	if err != nil {
+		log.Fatalf("invalid expiration config: %v", err)
+	}
+
+	expirer := expiration.NewService(database, expCfg)
 	expirer.Start()
 
 	// Setup HTTP routes

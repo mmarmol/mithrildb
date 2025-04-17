@@ -508,7 +508,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to store without expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -1579,23 +1579,23 @@ const docTemplate = `{
         },
         "/metrics": {
             "get": {
-                "description": "Returns server-level and RocksDB-specific metrics, including memory usage, uptime, and database statistics.",
+                "description": "Returns server-level, RocksDB and expiration system metrics including memory usage, uptime, compaction stats, and TTL cleanup activity.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "monitoring"
                 ],
-                "summary": "Retrieve metrics",
+                "summary": "Retrieve internal metrics",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Detailed metrics of the server, database and expiration subsystem",
                         "schema": {
                             "$ref": "#/definitions/metrics.FullMetrics"
                         }
                     },
                     "500": {
-                        "description": "Failed to collect metrics",
+                        "description": "Failed to collect or serialize metrics",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -1609,6 +1609,9 @@ const docTemplate = `{
             "description": "Global server and database configuration.",
             "type": "object",
             "properties": {
+                "expiration": {
+                    "$ref": "#/definitions/config.ExpirationConfig"
+                },
                 "read_defaults": {
                     "$ref": "#/definitions/config.ReadOptionsConfig"
                 },
@@ -1620,6 +1623,44 @@ const docTemplate = `{
                 },
                 "write_defaults": {
                     "$ref": "#/definitions/config.WriteOptionsConfig"
+                }
+            }
+        },
+        "config.ExpirationConfig": {
+            "description": "Expiration (TTL) service configuration.",
+            "type": "object",
+            "properties": {
+                "auto_scale": {
+                    "description": "Enable or disable automatic scaling",
+                    "type": "boolean"
+                },
+                "max_per_cycle": {
+                    "description": "Maximum documents processed per cycle",
+                    "type": "integer"
+                },
+                "max_per_cycle_limit": {
+                    "description": "Maximum limit when scaling up",
+                    "type": "integer"
+                },
+                "min_per_cycle": {
+                    "description": "Minimum limit when scaling down",
+                    "type": "integer"
+                },
+                "scale_down_threshold": {
+                    "description": "Scale down if deletions \u003c MaxPerCycle * threshold",
+                    "type": "number"
+                },
+                "scale_step": {
+                    "description": "Step amount to increase/decrease",
+                    "type": "integer"
+                },
+                "scale_up_factor": {
+                    "description": "Scale up if duration \u003c TickInterval * factor",
+                    "type": "number"
+                },
+                "tick_interval": {
+                    "description": "Interval between expiration runs (e.g. \"1m\", \"30s\")",
+                    "type": "string"
                 }
             }
         },
@@ -1835,9 +1876,35 @@ const docTemplate = `{
                 }
             }
         },
+        "metrics.ExpirationMetrics": {
+            "type": "object",
+            "properties": {
+                "last_deleted": {
+                    "type": "integer"
+                },
+                "last_duration_ms": {
+                    "type": "integer"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "last_run_unix": {
+                    "type": "integer"
+                },
+                "total_deleted": {
+                    "type": "integer"
+                },
+                "total_runs": {
+                    "type": "integer"
+                }
+            }
+        },
         "metrics.FullMetrics": {
             "type": "object",
             "properties": {
+                "expiration": {
+                    "$ref": "#/definitions/metrics.ExpirationMetrics"
+                },
                 "rocksdb": {
                     "type": "object",
                     "additionalProperties": {}

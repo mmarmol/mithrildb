@@ -64,20 +64,29 @@ func (s *Service) ProcessCycle() (int, error) {
 }
 
 func (s *Service) adaptLimit(deleted int, duration time.Duration) {
-	// Escalar hacia arriba si estamos al tope y rápido
-	if deleted == s.config.MaxPerCycle && duration < s.config.TickInterval/2 {
-		s.config.MaxPerCycle += 100
-		if s.config.MaxPerCycle > 5000 {
-			s.config.MaxPerCycle = 5000
+	cfg := s.config
+
+	if !cfg.AutoScale {
+		return // Autoscaling is disabled
+	}
+
+	// 📈 Scale up:
+	// If we hit the current max and the cycle ran fast enough, increase MaxPerCycle
+	if deleted == cfg.MaxPerCycle && duration < time.Duration(float64(cfg.TickInterval)*cfg.ScaleUpFactor) {
+		s.config.MaxPerCycle += cfg.ScaleStep
+		if s.config.MaxPerCycle > cfg.MaxPerCycleLimit {
+			s.config.MaxPerCycle = cfg.MaxPerCycleLimit
 		}
 		return
 	}
 
-	// Solo considerar bajar si efectivamente hubo actividad, pero poca
-	if deleted > 0 && deleted < s.config.MaxPerCycle/4 && s.config.MaxPerCycle > 200 {
-		s.config.MaxPerCycle -= 100
-		if s.config.MaxPerCycle < 200 {
-			s.config.MaxPerCycle = 200
+	// 📉 Scale down:
+	// If few documents were deleted and we’re above the minimum threshold, reduce MaxPerCycle
+	minDeleted := int(float64(cfg.MaxPerCycle) * cfg.ScaleDownThreshold)
+	if deleted > 0 && deleted < minDeleted && s.config.MaxPerCycle > cfg.MinPerCycle {
+		s.config.MaxPerCycle -= cfg.ScaleStep
+		if s.config.MaxPerCycle < cfg.MinPerCycle {
+			s.config.MaxPerCycle = cfg.MinPerCycle
 		}
 	}
 }

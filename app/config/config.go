@@ -52,6 +52,7 @@ type AppConfig struct {
 	RocksDB       *RocksDBConfig     `json:"rocksdb"`
 	WriteDefaults WriteOptionsConfig `json:"write_defaults"`
 	ReadDefaults  ReadOptionsConfig  `json:"read_defaults"`
+	Expiration    ExpirationConfig   `json:"expiration"`
 }
 
 // UpdateResult represents the result of a configuration update.
@@ -60,6 +61,20 @@ type UpdateResult struct {
 	Applied  []string          `json:"applied"`          // Parameters applied immediately
 	Pending  []string          `json:"requires_restart"` // Parameters that require a restart
 	Rejected map[string]string `json:"rejected"`         // Parameters rejected with reasons
+}
+
+// ExpirationConfig holds configuration for the expiration background service.
+//
+// @Description Expiration (TTL) service configuration.
+type ExpirationConfig struct {
+	TickInterval       string  `json:"tick_interval"`        // Interval between expiration runs (e.g. "1m", "30s")
+	MaxPerCycle        int     `json:"max_per_cycle"`        // Maximum documents processed per cycle
+	AutoScale          bool    `json:"auto_scale"`           // Enable or disable automatic scaling
+	MinPerCycle        int     `json:"min_per_cycle"`        // Minimum limit when scaling down
+	MaxPerCycleLimit   int     `json:"max_per_cycle_limit"`  // Maximum limit when scaling up
+	ScaleStep          int     `json:"scale_step"`           // Step amount to increase/decrease
+	ScaleDownThreshold float64 `json:"scale_down_threshold"` // Scale down if deletions < MaxPerCycle * threshold
+	ScaleUpFactor      float64 `json:"scale_up_factor"`      // Scale up if duration < TickInterval * factor
 }
 
 func LoadConfig() AppConfig {
@@ -110,6 +125,18 @@ func LoadConfig() AppConfig {
 		cfg.ReadDefaults = ReadOptionsConfig{
 			FillCache: ro.Key("FillCache").MustBool(true),
 			ReadTier:  ro.Key("ReadTier").MustString("all"),
+		}
+		// [Expiration]
+		exp := file.Section("Expiration")
+		cfg.Expiration = ExpirationConfig{
+			TickInterval:       exp.Key("TickInterval").MustString("1m"),
+			MaxPerCycle:        exp.Key("MaxPerCycle").MustInt(500),
+			AutoScale:          exp.Key("AutoScale").MustBool(true),
+			MinPerCycle:        exp.Key("MinPerCycle").MustInt(100),
+			MaxPerCycleLimit:   exp.Key("MaxPerCycleLimit").MustInt(5000),
+			ScaleStep:          exp.Key("ScaleStep").MustInt(100),
+			ScaleDownThreshold: exp.Key("ScaleDownThreshold").MustFloat64(0.25),
+			ScaleUpFactor:      exp.Key("ScaleUpFactor").MustFloat64(0.5),
 		}
 	}
 
