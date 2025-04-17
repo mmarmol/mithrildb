@@ -26,7 +26,7 @@ type listElementRequest struct {
 // @Produce      json
 // @Param        key  query     string              true  "Key of the list document"
 // @Param        cf   query     string              false "Column family (default: 'default')"
-// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
+// @Param        expiration  query  int  false  "Optional expiration. TTL in seconds (<= 30d) or absolute Unix timestamp (> 30d). Omit to keep existing expiration."
 // @Param        body body      listElementRequest  true  "Element to add"
 // @Param        sync          query  boolean false "Write option: sync write to disk"
 // @Param        disable_wal   query  boolean false "Write option: disable write-ahead log"

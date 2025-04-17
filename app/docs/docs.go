@@ -177,7 +177,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -360,7 +360,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -431,7 +431,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -508,7 +508,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -732,7 +732,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -813,7 +813,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -982,7 +982,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -1069,7 +1069,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -1159,7 +1159,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -1249,7 +1249,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -1387,7 +1387,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     },
@@ -1462,7 +1462,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Expiration time in seconds (TTL \u003c= 30d or Unix timestamp)",
+                        "description": "Optional expiration. TTL in seconds (\u003c= 30d) or absolute Unix timestamp (\u003e 30d). Omit to keep existing expiration.",
                         "name": "expiration",
                         "in": "query"
                     }

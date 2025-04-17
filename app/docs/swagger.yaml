@@ -359,7 +359,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -450,7 +451,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -498,7 +500,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -549,7 +552,8 @@ paths:
         in: query
         name: type
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -699,7 +703,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -753,7 +758,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -868,7 +874,8 @@ paths:
         name: key
         required: true
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -927,7 +934,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -988,7 +996,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -1049,7 +1058,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -1141,7 +1151,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer
@@ -1192,7 +1203,8 @@ paths:
         in: query
         name: cf
         type: string
-      - description: Expiration time in seconds (TTL <= 30d or Unix timestamp)
+      - description: Optional expiration. TTL in seconds (<= 30d) or absolute Unix
+          timestamp (> 30d). Omit to keep existing expiration.
         in: query
         name: expiration
         type: integer

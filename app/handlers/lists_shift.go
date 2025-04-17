@@ -15,7 +15,7 @@ import (
 // @Accept       json
 // @Produce      json
 // @Param        key  query     string  true  "Key of the list document"
-// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
+// @Param        expiration  query  int  false  "Optional expiration. TTL in seconds (<= 30d) or absolute Unix timestamp (> 30d). Omit to keep existing expiration."
 // @Param        cf   query     string  false "Column family (default: 'default')"
 // @Param        sync        query bool false "Write option: wait for sync"
 // @Param        disable_wal query bool false "Write option: disable WAL"

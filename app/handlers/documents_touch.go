@@ -16,7 +16,7 @@ import (
 // @Produce      json
 // @Param        key         query  string true  "Document key"
 // @Param        cf          query  string false "Column family (default: 'default')"
-// @Param        expiration  query  int    false "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
+// @Param        expiration  query  int  false  "Optional expiration. TTL in seconds (<= 30d) or absolute Unix timestamp (> 30d). Omit to keep existing expiration."
 // @Success      200 {object} model.Document
 // @Failure      400 {object} handlers.ErrorResponse "Invalid request"
 // @Failure      404 {object} handlers.ErrorResponse "Key not found or already expired"

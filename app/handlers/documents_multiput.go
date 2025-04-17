@@ -40,7 +40,7 @@ type BulkPutRequestEntry struct {
 // @Accept       json
 // @Produce      json
 // @Param        cf    query     string                              false  "Column family (defaults to 'default')"
-// @Param        expiration  query  int  false  "Expiration time in seconds (TTL <= 30d or Unix timestamp)"
+// @Param        expiration  query  int  false  "Optional expiration. TTL in seconds (<= 30d) or absolute Unix timestamp (> 30d). Omit to keep existing expiration."
 // @Param        body  body      map[string]handlers.BulkPutRequestEntry  true  "Map of key to value/type entry"
 // @Success      200   {object}  map[string]model.Document
 // @Failure      400   {object}  handlers.ErrorResponse  "Invalid input or empty payload"
@@ -99,7 +99,7 @@ func bulkPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 			batch[key] = doc
 		}
 
-		if err := database.MultiPut(cf, batch, *expiration, opts); err != nil {
+		if err := database.MultiPut(cf, batch, expiration, opts); err != nil {
 			mapAndRespondWithError(w, err)
 			return
 		}

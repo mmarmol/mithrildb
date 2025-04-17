@@ -11,10 +11,16 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64, opts *grocksdb.WriteOptions) error {
+func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration *int64, opts *grocksdb.WriteOptions) error {
 	handle, ok := db.Families[cf]
 	if !ok {
 		return ErrInvalidColumnFamily
+	}
+
+	if expiration != nil {
+		if err := model.ValidateExpiration(*expiration); err != nil {
+			return err
+		}
 	}
 
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
@@ -36,6 +42,11 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64
 			return fmt.Errorf("invalid value for key '%s': %w", k, err)
 		}
 
+		exp := int64(0)
+		if expiration != nil {
+			exp = *expiration
+		}
+
 		doc := model.Document{
 			Key:   k,
 			Value: rawValue,
@@ -43,7 +54,7 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64
 				Rev:        uuid.NewString(),
 				Type:       model.DocTypeJSON,
 				UpdatedAt:  now,
-				Expiration: expiration,
+				Expiration: exp,
 			},
 		}
 
@@ -58,9 +69,11 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration int64
 			return fmt.Errorf("failed to write document for key '%s': %w", k, err)
 		}
 
-		if err := db.ReplaceTTLInTxn(txn, cf, k, expiration); err != nil {
-			txn.Rollback()
-			return fmt.Errorf("failed to write TTL for key '%s': %w", k, err)
+		if expiration != nil {
+			if err := db.ReplaceTTLInTxn(txn, cf, k, *expiration); err != nil {
+				txn.Rollback()
+				return fmt.Errorf("failed to write TTL for key '%s': %w", k, err)
+			}
 		}
 	}
 
