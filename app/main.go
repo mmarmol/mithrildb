@@ -6,6 +6,7 @@ import (
 	"log"
 	"mithrildb/config"
 	"mithrildb/db"
+	"mithrildb/events"
 	"mithrildb/expiration"
 	"mithrildb/handlers"
 	"net/http"
@@ -35,6 +36,10 @@ func main() {
 	// Crea el wrapper DB (tu estructura personalizada)
 	database := db.NewDB(rocksdb, families, cfg)
 	defer database.Close() // Este cierre se encarga de cerrar tanto la base como los CFs
+
+	if err := events.InitEventQueue(database); err != nil {
+		log.Fatalf("cannot init event queue: %v", err)
+	}
 
 	expCfg, err := expiration.BuildFromAppConfig(cfg)
 	if err != nil {
