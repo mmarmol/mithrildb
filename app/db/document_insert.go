@@ -11,8 +11,8 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// Insert stores a Document only if the key doesn't exist (atomic using transaction).
-func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
+// InsertDocument stores a document only if the key does not already exist (with expiration and validation).
+func (db *DB) InsertDocument(opts DocumentWriteOptions) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
@@ -53,9 +53,8 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 	defer val.Free()
 
 	if val.Exists() {
-		raw := val.Data()
 		var existing model.Document
-		if err := json.Unmarshal(raw, &existing); err == nil {
+		if err := json.Unmarshal(val.Data(), &existing); err == nil {
 			if !model.IsExpired(existing.Meta) {
 				txn.Rollback()
 				return nil, ErrKeyAlreadyExists
@@ -67,9 +66,9 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 	}
 
 	now := time.Now()
-	expiration := int64(0)
+	exp := int64(0)
 	if opts.Expiration != nil {
-		expiration = *opts.Expiration
+		exp = *opts.Expiration
 	}
 
 	doc := model.Document{
@@ -79,7 +78,7 @@ func (db *DB) Insert(opts PutOptions) (*model.Document, error) {
 			Rev:        uuid.NewString(),
 			Type:       opts.Type,
 			UpdatedAt:  now,
-			Expiration: expiration,
+			Expiration: exp,
 		},
 	}
 

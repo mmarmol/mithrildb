@@ -44,7 +44,11 @@ func documentGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http
 			defer opts.Destroy()
 		}
 
-		doc, err := database.Get(cf, key, opts)
+		doc, err := database.GetDocument(db.DocumentReadOptions{
+			ColumnFamily: cf,
+			Key:          key,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

@@ -49,7 +49,7 @@ func listShiftHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 			defer opts.Destroy()
 		}
 
-		result, err := database.ListShift(db.ListOpOptions{
+		result, err := database.ShiftFromList(db.ListOpOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			WriteOptions: opts,

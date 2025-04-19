@@ -53,7 +53,7 @@ func createFamilyHandler(database *db.DB) http.HandlerFunc {
 			return
 		}
 
-		err := database.CreateFamily(name)
+		err := database.CreateColumnFamily(name)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

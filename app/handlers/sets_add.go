@@ -59,7 +59,7 @@ func setAddHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Han
 			defer opts.Destroy()
 		}
 
-		_, err = database.SetAdd(db.SetOpOptions{
+		_, err = database.AddToSet(db.SetOpOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			WriteOptions: opts,

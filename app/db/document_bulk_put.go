@@ -11,14 +11,16 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration *int64, opts *grocksdb.WriteOptions) error {
-	handle, ok := db.Families[cf]
+// BulkPutDocuments writes multiple documents in a single atomic transaction.
+// All documents must be valid and optionally share a common expiration.
+func (db *DB) BulkPutDocuments(opts BulkWriteOptions) error {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return ErrInvalidColumnFamily
 	}
 
-	if expiration != nil {
-		if err := model.ValidateExpiration(*expiration); err != nil {
+	if opts.Expiration != nil {
+		if err := model.ValidateExpiration(*opts.Expiration); err != nil {
 			return err
 		}
 	}
@@ -27,12 +29,12 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration *int6
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()
 
-	txn := db.TransactionDB.TransactionBegin(opts, txnOpts, nil)
+	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
 	now := time.Now()
 
-	for k, rawValue := range pairs {
+	for k, rawValue := range opts.Documents {
 		if err := model.ValidateDocumentKey(k); err != nil {
 			txn.Rollback()
 			return fmt.Errorf("invalid key '%s': %w", k, err)
@@ -43,8 +45,8 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration *int6
 		}
 
 		exp := int64(0)
-		if expiration != nil {
-			exp = *expiration
+		if opts.Expiration != nil {
+			exp = *opts.Expiration
 		}
 
 		doc := model.Document{
@@ -69,8 +71,8 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration *int6
 			return fmt.Errorf("failed to write document for key '%s': %w", k, err)
 		}
 
-		if expiration != nil {
-			if err := db.ReplaceTTLInTxn(txn, cf, k, *expiration); err != nil {
+		if opts.Expiration != nil {
+			if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, k, *opts.Expiration); err != nil {
 				txn.Rollback()
 				return fmt.Errorf("failed to write TTL for key '%s': %w", k, err)
 			}
@@ -79,7 +81,7 @@ func (db *DB) MultiPut(cf string, pairs map[string]interface{}, expiration *int6
 
 	if err := txn.Commit(); err != nil {
 		txn.Rollback()
-		return fmt.Errorf("failed to commit MultiPut: %w", err)
+		return fmt.Errorf("failed to commit BulkPutDocuments: %w", err)
 	}
 
 	return nil

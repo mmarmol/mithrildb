@@ -11,19 +11,8 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// PutOptions defines configurable parameters for a document insert or update.
-type PutOptions struct {
-	ColumnFamily string                 // Target column family
-	Key          string                 // Document key
-	Value        interface{}            // Document value (string, map, etc.)
-	Cas          string                 // Optional revision for optimistic locking
-	Type         string                 // Document type (json, counter, etc.)
-	Expiration   *int64                 // Optional TTL (Unix timestamp)
-	WriteOptions *grocksdb.WriteOptions // RocksDB write options
-}
-
-// Put stores a Document using the provided options, handling revision control.
-func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
+// PutDocument stores or updates a document with optional CAS and expiration.
+func (db *DB) PutDocument(opts DocumentWriteOptions) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
@@ -44,7 +33,6 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		}
 	}
 
-	// Always use transaction now
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
 	txnOpts.SetSetSnapshot(true)
 	txnOpts.SetLockTimeout(1000)
@@ -53,7 +41,6 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
-	// Check CAS if provided
 	if opts.Cas != "" {
 		readOpts := grocksdb.NewDefaultReadOptions()
 		readOpts.SetFillCache(false)
@@ -79,11 +66,10 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 		}
 	}
 
-	// Prepare new document
 	now := time.Now()
-	expiration := int64(0)
+	exp := int64(0)
 	if opts.Expiration != nil {
-		expiration = *opts.Expiration
+		exp = *opts.Expiration
 	}
 
 	doc := model.Document{
@@ -93,7 +79,7 @@ func (db *DB) PutWithOptions(opts PutOptions) (*model.Document, error) {
 			Rev:        uuid.NewString(),
 			Type:       opts.Type,
 			UpdatedAt:  now,
-			Expiration: expiration,
+			Expiration: exp,
 		},
 	}
 

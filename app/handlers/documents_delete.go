@@ -42,7 +42,12 @@ func documentDeleteHandler(database *db.DB, defaults config.WriteOptionsConfig) 
 		}
 
 		// Call Delete with the specified column family
-		if err := database.DeleteDirect(cf, key, opts); err != nil {
+		err = database.DeleteDocument(db.DocumentDeleteOptions{
+			ColumnFamily: cf,
+			Key:          key,
+			WriteOptions: opts,
+		})
+		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
 		}

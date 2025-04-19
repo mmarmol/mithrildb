@@ -48,7 +48,13 @@ func listRangeHandler(database *db.DB, defaults config.ReadOptionsConfig) http.H
 			defer opts.Destroy()
 		}
 
-		res, err := database.ListRange(cf, key, start, end, opts)
+		res, err := database.GetListRange(db.ListRangeOptions{
+			ColumnFamily: cf,
+			Key:          key,
+			Start:        start,
+			End:          end,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

@@ -10,13 +10,43 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-type ListOpOptions struct {
-	ColumnFamily string
-	Key          string
-	WriteOptions *grocksdb.WriteOptions
-	Expiration   *int64
+// PushToList appends an element to the end of a list document.
+func (db *DB) PushToList(opts ListPushOptions) (interface{}, error) {
+	return db.withListTransaction(opts.ListOpOptions, func(list []interface{}) ([]interface{}, interface{}, error) {
+		return append(list, opts.Element), nil, nil
+	})
 }
 
+// UnshiftToList inserts an element at the beginning of a list document.
+func (db *DB) UnshiftToList(opts ListPushOptions) (interface{}, error) {
+	return db.withListTransaction(opts.ListOpOptions, func(list []interface{}) ([]interface{}, interface{}, error) {
+		return append([]interface{}{opts.Element}, list...), nil, nil
+	})
+}
+
+// PopFromList removes the last element from a list document and returns it.
+func (db *DB) PopFromList(opts ListOpOptions) (interface{}, error) {
+	return db.withListTransaction(opts, func(list []interface{}) ([]interface{}, interface{}, error) {
+		if len(list) == 0 {
+			return nil, nil, ErrEmptyList
+		}
+		last := list[len(list)-1]
+		return list[:len(list)-1], last, nil
+	})
+}
+
+// ShiftFromList removes the first element from a list document and returns it.
+func (db *DB) ShiftFromList(opts ListOpOptions) (interface{}, error) {
+	return db.withListTransaction(opts, func(list []interface{}) ([]interface{}, interface{}, error) {
+		if len(list) == 0 {
+			return nil, nil, ErrEmptyList
+		}
+		first := list[0]
+		return list[1:], first, nil
+	})
+}
+
+// withListTransaction applies a list-modifying function transactionally to a list document.
 func (db *DB) withListTransaction(
 	opts ListOpOptions,
 	modifier func([]interface{}) ([]interface{}, interface{}, error),
@@ -112,41 +142,4 @@ func (db *DB) withListTransaction(
 	}
 
 	return result, nil
-}
-
-type ListPushOptions struct {
-	ListOpOptions
-	Element interface{}
-}
-
-func (db *DB) ListPush(opts ListPushOptions) (interface{}, error) {
-	return db.withListTransaction(opts.ListOpOptions, func(list []interface{}) ([]interface{}, interface{}, error) {
-		return append(list, opts.Element), nil, nil
-	})
-}
-
-func (db *DB) ListUnshift(opts ListPushOptions) (interface{}, error) {
-	return db.withListTransaction(opts.ListOpOptions, func(list []interface{}) ([]interface{}, interface{}, error) {
-		return append([]interface{}{opts.Element}, list...), nil, nil
-	})
-}
-
-func (db *DB) ListPop(opts ListOpOptions) (interface{}, error) {
-	return db.withListTransaction(opts, func(list []interface{}) ([]interface{}, interface{}, error) {
-		if len(list) == 0 {
-			return nil, nil, ErrEmptyList
-		}
-		last := list[len(list)-1]
-		return list[:len(list)-1], last, nil
-	})
-}
-
-func (db *DB) ListShift(opts ListOpOptions) (interface{}, error) {
-	return db.withListTransaction(opts, func(list []interface{}) ([]interface{}, interface{}, error) {
-		if len(list) == 0 {
-			return nil, nil, ErrEmptyList
-		}
-		first := list[0]
-		return list[1:], first, nil
-	})
 }

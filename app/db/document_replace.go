@@ -11,9 +11,9 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// updateDocumentIfExists executes a transactional update over an existing document.
-func (db *DB) updateDocumentIfExists(
-	opts PutOptions,
+// updateIfExists executes a transactional update on an existing document.
+func (db *DB) updateIfExists(
+	opts DocumentWriteOptions,
 	modify func(doc *model.Document) error,
 ) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
@@ -91,9 +91,9 @@ func (db *DB) updateDocumentIfExists(
 	return &existing, nil
 }
 
-// Replace stores a Document only if the key already exists.
-func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
-	return db.updateDocumentIfExists(opts, func(doc *model.Document) error {
+// ReplaceDocument overwrites a document only if the key already exists.
+func (db *DB) ReplaceDocument(opts DocumentWriteOptions) (*model.Document, error) {
+	return db.updateIfExists(opts, func(doc *model.Document) error {
 		if opts.Value == nil {
 			return ErrNilValue
 		}
@@ -114,9 +114,9 @@ func (db *DB) Replace(opts PutOptions) (*model.Document, error) {
 	})
 }
 
-// Touch updates the expiration of a document without modifying its content.
-func (db *DB) Touch(opts PutOptions) (*model.Document, error) {
-	return db.updateDocumentIfExists(opts, func(doc *model.Document) error {
+// TouchDocument updates only the expiration timestamp of an existing document.
+func (db *DB) TouchDocument(opts DocumentWriteOptions) (*model.Document, error) {
+	return db.updateIfExists(opts, func(doc *model.Document) error {
 		if opts.Expiration == nil {
 			return model.ErrInvalidExpiration
 		}

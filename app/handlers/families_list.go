@@ -18,7 +18,7 @@ import (
 // @Router       /families [get]
 func listFamiliesHandler(database *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		usrFamilies, _ := database.ListFamilyNames()
+		usrFamilies, _ := database.ListColumnFamilies()
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(usrFamilies)

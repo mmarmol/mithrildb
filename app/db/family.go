@@ -10,8 +10,8 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// ListFamilyNames returns the list of column family names currently loaded in memory.
-func (db *DB) ListFamilyNames() (usr, sys []string) {
+// ListColumnFamilies returns the loaded column family names, split into user/system categories.
+func (db *DB) ListColumnFamilies() (userCFs, systemCFs []string) {
 	names := make([]string, 0, len(db.Families))
 	for name := range db.Families {
 		names = append(names, name)
@@ -20,51 +20,54 @@ func (db *DB) ListFamilyNames() (usr, sys []string) {
 	return splitCFNamesByType(names)
 }
 
-func (db *DB) CreateFamily(cfName string) error {
-	if _, exists := db.Families[cfName]; exists {
+// CreateColumnFamily creates a new column family with default RocksDB options.
+func (db *DB) CreateColumnFamily(name string) error {
+	if _, exists := db.Families[name]; exists {
 		return ErrFamilyExists
 	}
 
 	opts := grocksdb.NewDefaultOptions()
 	defer opts.Destroy()
 
-	handle, err := db.TransactionDB.CreateColumnFamily(opts, cfName)
+	handle, err := db.TransactionDB.CreateColumnFamily(opts, name)
 	if err != nil {
 		return err
 	}
 
-	db.Families[cfName] = handle
+	db.Families[name] = handle
 	return nil
 }
 
-// GetOrCreateSystemIndex ensures a system-level CF is available (created if missing).
-func (db *DB) GetOrCreateSystemIndex(cfName string) (*grocksdb.ColumnFamilyHandle, error) {
-	if handle, ok := db.Families[cfName]; ok {
+// EnsureSystemColumnFamily ensures a system-level column family exists, creating it if necessary.
+func (db *DB) EnsureSystemColumnFamily(name string) (*grocksdb.ColumnFamilyHandle, error) {
+	if handle, ok := db.Families[name]; ok {
 		return handle, nil
 	}
 
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	if err := db.CreateFamily(cfName); err != nil {
+	if err := db.CreateColumnFamily(name); err != nil {
 		if !errors.Is(err, ErrFamilyExists) {
 			return nil, err
 		}
 	}
 
-	if handle, ok := db.Families[cfName]; ok {
+	if handle, ok := db.Families[name]; ok {
 		return handle, nil
 	}
-	return nil, fmt.Errorf("column family %q not available after creation", cfName)
+	return nil, fmt.Errorf("column family %q not available after creation", name)
 }
 
 var userCFRegex = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
 var systemCFRegex = regexp.MustCompile(`^[a-z0-9_.-]{1,64}$`)
 
+// IsValidUserCF checks whether a column family name is valid for user data.
 func IsValidUserCF(name string) bool {
 	return userCFRegex.MatchString(name)
 }
 
+// IsValidSystemCF checks whether a column family name is valid for internal system data.
 func IsValidSystemCF(name string) bool {
 	if !systemCFRegex.MatchString(name) {
 		return false
@@ -84,7 +87,7 @@ func splitCFNamesByType(names []string) (userCFs, systemCFs []string) {
 			userCFs = append(userCFs, name)
 		}
 		if IsValidSystemCF(name) {
-			systemCFs = append(userCFs, name)
+			systemCFs = append(systemCFs, name)
 		}
 	}
 	return

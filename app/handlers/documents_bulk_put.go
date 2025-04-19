@@ -99,7 +99,13 @@ func bulkPutHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 			batch[key] = doc
 		}
 
-		if err := database.MultiPut(cf, batch, expiration, opts); err != nil {
+		err = database.BulkPutDocuments(db.BulkWriteOptions{
+			ColumnFamily: cf,
+			Documents:    batch,
+			Expiration:   expiration,
+			WriteOptions: opts,
+		})
+		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
 		}

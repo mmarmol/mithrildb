@@ -50,7 +50,13 @@ func listKeysHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Ha
 			defer opts.Destroy()
 		}
 
-		keys, err := database.ListKeys(cf, prefix, startAfter, limit, opts)
+		keys, err := database.ListDocumentKeys(db.KeyListOptions{
+			ColumnFamily: cf,
+			Prefix:       prefix,
+			StartAfter:   startAfter,
+			Limit:        limit,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

@@ -51,14 +51,24 @@ func listDocumentsHandler(database *db.DB, defaults config.ReadOptionsConfig) ht
 		}
 
 		// First list keys
-		keys, err := database.ListKeys(cf, prefix, startAfter, limit, opts)
+		keys, err := database.ListDocumentKeys(db.KeyListOptions{
+			ColumnFamily: cf,
+			Prefix:       prefix,
+			StartAfter:   startAfter,
+			Limit:        limit,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return
 		}
 
 		// Then fetch documents for those keys
-		docs, err := database.MultiGet(cf, keys, opts)
+		docs, err := database.BulkGetDocuments(db.BulkReadOptions{
+			ColumnFamily: cf,
+			Keys:         keys,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

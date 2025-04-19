@@ -49,7 +49,7 @@ func listPopHandler(database *db.DB, defaults config.WriteOptionsConfig) http.Ha
 			defer opts.Destroy()
 		}
 
-		res, err := database.ListPop(db.ListOpOptions{
+		res, err := database.PopFromList(db.ListOpOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Expiration:   expiration,

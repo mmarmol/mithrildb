@@ -38,26 +38,23 @@ type Document struct {
 	Meta  Metadata    `json:"meta"`  // Metadata for versioning, expiration, etc.
 }
 
+// ValidateValue checks whether a value is valid for the given document type.
 func ValidateValue(value interface{}, typeHint string) error {
 	switch typeHint {
 	case DocTypeJSON:
-		// Debe poder serializar a JSON
 		_, err := json.Marshal(value)
 		if err != nil {
 			return fmt.Errorf("invalid JSON: %w", err)
 		}
 	case DocTypeCounter:
-		// Debe ser entero (int, int64, float64, etc)
 		if _, err := ParseCounterValue(value); err != nil {
 			return ErrInvalidCounterValue
 		}
 	case DocTypeList:
-		// Debe ser slice
 		if _, ok := value.([]interface{}); !ok {
 			return errors.New("list value must be a JSON array")
 		}
 	case DocTypeSet:
-		// También array, pero sin repetidos (eso se puede validar más adelante)
 		if _, ok := value.([]interface{}); !ok {
 			return errors.New("set value must be a JSON array")
 		}
@@ -90,6 +87,7 @@ func ParseCounterValue(val interface{}) (int64, error) {
 
 var docKeyRegex = regexp.MustCompile(`^[a-zA-Z0-9._:-]{1,250}$`)
 
+// ValidateDocumentKey ensures the key matches naming rules
 func ValidateDocumentKey(key string) error {
 	if !docKeyRegex.MatchString(key) {
 		return fmt.Errorf("%w: invalid characters or length", ErrInvalidDocumentKey)
@@ -103,6 +101,7 @@ func ValidateDocumentKey(key string) error {
 	return nil
 }
 
+// IsExpired returns true if the document is expired according to its TTL metadata.
 func IsExpired(meta Metadata) bool {
 	if meta.Expiration <= 0 {
 		return false // 0 o negative "no expiration"
@@ -110,6 +109,7 @@ func IsExpired(meta Metadata) bool {
 	return time.Now().Unix() > meta.Expiration
 }
 
+// ValidateExpiration checks whether an expiration timestamp is valid.
 func ValidateExpiration(exp int64) error {
 	const maxFutureOffset = 60 * 60 * 24 * 365 * 100 // 100 años
 	now := time.Now().Unix()
@@ -118,11 +118,11 @@ func ValidateExpiration(exp int64) error {
 	case exp < 0:
 		return ErrInvalidExpiration
 	case exp == 0:
-		return nil // sin expiración
+		return nil // no expiration
 	case exp < now:
-		return ErrInvalidExpiration // ya está vencido
+		return ErrInvalidExpiration // already expired
 	case exp > now+maxFutureOffset:
-		return ErrInvalidExpiration // demasiado en el futuro
+		return ErrInvalidExpiration // too far in future
 	default:
 		return nil
 	}

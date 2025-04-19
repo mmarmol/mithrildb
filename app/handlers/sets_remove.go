@@ -55,7 +55,7 @@ func setRemoveHandler(database *db.DB, defaults config.WriteOptionsConfig) http.
 			defer opts.Destroy()
 		}
 
-		_, err = database.SetRemove(db.SetOpOptions{
+		_, err = database.RemoveFromSet(db.SetOpOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			WriteOptions: opts,

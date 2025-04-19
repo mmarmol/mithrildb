@@ -52,7 +52,7 @@ func documentTouchHandler(database *db.DB, defaults config.WriteOptionsConfig) h
 		}
 
 		// Perform touch
-		doc, err := database.Touch(db.PutOptions{
+		doc, err := database.TouchDocument(db.DocumentWriteOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Expiration:   expiration,

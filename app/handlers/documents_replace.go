@@ -68,8 +68,8 @@ func documentReplaceHandler(database *db.DB, defaults config.WriteOptionsConfig)
 			defer opts.Destroy()
 		}
 
-		// Attempt insert
-		doc, err := database.Replace(db.PutOptions{
+		// Attempt replace
+		doc, err := database.ReplaceDocument(db.DocumentWriteOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Value:        body.Value,

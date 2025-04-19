@@ -7,12 +7,13 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) DeleteDirect(cfName, key string, opts *grocksdb.WriteOptions) error {
-	handle, ok := db.Families[cfName]
+// DeleteDocument removes a document and its TTL index (if any) in an atomic transaction.
+func (db *DB) DeleteDocument(opts DocumentDeleteOptions) error {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return ErrInvalidColumnFamily
 	}
-	if err := model.ValidateDocumentKey(key); err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return err
 	}
 
@@ -20,15 +21,15 @@ func (db *DB) DeleteDirect(cfName, key string, opts *grocksdb.WriteOptions) erro
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()
 
-	txn := db.TransactionDB.TransactionBegin(opts, txnOpts, nil)
+	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
-	if err := txn.DeleteCF(handle, []byte(key)); err != nil {
+	if err := txn.DeleteCF(handle, []byte(opts.Key)); err != nil {
 		txn.Rollback()
 		return fmt.Errorf("failed to delete document: %w", err)
 	}
 
-	if err := db.ClearAllTTLInTxn(txn, cfName, key); err != nil {
+	if err := db.ClearAllTTLInTxn(txn, opts.ColumnFamily, opts.Key); err != nil {
 		txn.Rollback()
 		return fmt.Errorf("failed to remove TTL index: %w", err)
 	}

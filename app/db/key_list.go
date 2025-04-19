@@ -1,31 +1,27 @@
 package db
 
-import (
-	"github.com/linxGnu/grocksdb"
-)
-
-func (db *DB) ListKeys(cf string, prefix string, startAfter string, limit int, opts *grocksdb.ReadOptions) ([]string, error) {
-	handle, ok := db.Families[cf]
+// ListDocumentKeys returns keys from a column family that match the prefix and pagination options.
+func (db *DB) ListDocumentKeys(opts KeyListOptions) ([]string, error) {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
 
 	var keys []string
 
-	// Si no se pasan opciones, usamos las predeterminadas
-	if opts == nil {
-		opts = db.DefaultReadOptions
+	if opts.ReadOptions == nil {
+		opts.ReadOptions = db.DefaultReadOptions
 	}
 
-	it := db.TransactionDB.NewIteratorCF(opts, handle)
+	it := db.TransactionDB.NewIteratorCF(opts.ReadOptions, handle)
 	defer it.Close()
 
-	startKey := []byte(startAfter)
-	prefixBytes := []byte(prefix)
+	startKey := []byte(opts.StartAfter)
+	prefixBytes := []byte(opts.Prefix)
 
 	if len(startKey) > 0 {
 		it.Seek(startKey)
-		if it.Valid() && string(it.Key().Data()) == startAfter {
+		if it.Valid() && string(it.Key().Data()) == opts.StartAfter {
 			it.Next()
 		}
 	} else if len(prefixBytes) > 0 {
@@ -40,15 +36,16 @@ func (db *DB) ListKeys(cf string, prefix string, startAfter string, limit int, o
 
 		k := string(key.Data())
 
-		if len(prefixBytes) > 0 && !hasPrefix(k, prefix) {
+		if len(prefixBytes) > 0 && !hasPrefix(k, opts.Prefix) {
 			break
 		}
 
 		keys = append(keys, k)
-		if len(keys) >= limit {
+		if len(keys) >= opts.Limit {
 			break
 		}
 	}
+
 	if keys == nil {
 		keys = []string{}
 	}

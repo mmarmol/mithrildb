@@ -70,8 +70,8 @@ func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			defer opts.Destroy()
 		}
 
-		// Build put options
-		putOpts := db.PutOptions{
+		// Execute put
+		doc, err := database.PutDocument(db.DocumentWriteOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Value:        body.Value,
@@ -79,10 +79,8 @@ func documentPutHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			Type:         docType,
 			Expiration:   expiration,
 			WriteOptions: opts,
-		}
+		})
 
-		// Execute put
-		doc, err := database.PutWithOptions(putOpts)
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

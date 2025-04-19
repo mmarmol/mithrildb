@@ -70,7 +70,7 @@ func documentInsertHandler(database *db.DB, defaults config.WriteOptionsConfig) 
 		}
 
 		// Attempt insert
-		doc, err := database.Insert(db.PutOptions{
+		doc, err := database.InsertDocument(db.DocumentWriteOptions{
 			ColumnFamily: cf,
 			Key:          key,
 			Value:        body.Value,

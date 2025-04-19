@@ -46,7 +46,12 @@ func setContainsHandler(database *db.DB, defaults config.ReadOptionsConfig) http
 			defer opts.Destroy()
 		}
 
-		contains, err := database.SetContains(cf, key, elementStr, opts)
+		contains, err := database.CheckSetContains(db.SetContainsOptions{
+			ColumnFamily: cf,
+			Key:          key,
+			Element:      elementStr,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

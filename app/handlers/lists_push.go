@@ -66,7 +66,7 @@ func listPushHandler(database *db.DB, defaults config.WriteOptionsConfig) http.H
 			defer opts.Destroy()
 		}
 
-		_, err = database.ListPush(db.ListPushOptions{
+		_, err = database.PushToList(db.ListPushOptions{
 			ListOpOptions: db.ListOpOptions{
 				ColumnFamily: cf,
 				Key:          key,

@@ -10,8 +10,23 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-type SetOpOptions = ListOpOptions
+// AddToSet adds an element to a set-type document.
+func (db *DB) AddToSet(opts SetOpOptions, element interface{}) (interface{}, error) {
+	return db.withSetTransaction(opts, func(set map[interface{}]bool) (map[interface{}]bool, interface{}, error) {
+		set[element] = true
+		return set, nil, nil
+	})
+}
 
+// RemoveFromSet removes an element from a set-type document.
+func (db *DB) RemoveFromSet(opts SetOpOptions, element interface{}) (interface{}, error) {
+	return db.withSetTransaction(opts, func(set map[interface{}]bool) (map[interface{}]bool, interface{}, error) {
+		delete(set, element)
+		return set, nil, nil
+	})
+}
+
+// withSetTransaction applies a transactional update to a set document.
 func (db *DB) withSetTransaction(
 	opts SetOpOptions,
 	modifier func(map[interface{}]bool) (map[interface{}]bool, interface{}, error),
@@ -22,7 +37,7 @@ func (db *DB) withSetTransaction(
 	}
 
 	if err := model.ValidateDocumentKey(opts.Key); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	txnOpts := grocksdb.NewDefaultTransactionOptions()
@@ -118,18 +133,4 @@ func (db *DB) withSetTransaction(
 	}
 
 	return result, nil
-}
-
-func (db *DB) SetAdd(opts SetOpOptions, element interface{}) (interface{}, error) {
-	return db.withSetTransaction(opts, func(set map[interface{}]bool) (map[interface{}]bool, interface{}, error) {
-		set[element] = true
-		return set, nil, nil
-	})
-}
-
-func (db *DB) SetRemove(opts SetOpOptions, element interface{}) (interface{}, error) {
-	return db.withSetTransaction(opts, func(set map[interface{}]bool) (map[interface{}]bool, interface{}, error) {
-		delete(set, element)
-		return set, nil, nil
-	})
 }

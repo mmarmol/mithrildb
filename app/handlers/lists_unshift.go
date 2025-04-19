@@ -58,7 +58,7 @@ func listUnshiftHandler(database *db.DB, defaults config.WriteOptionsConfig) htt
 			defer opts.Destroy()
 		}
 
-		_, err = database.ListUnshift(db.ListPushOptions{
+		_, err = database.UnshiftToList(db.ListPushOptions{
 			ListOpOptions: db.ListOpOptions{
 				ColumnFamily: cf,
 				Key:          key,

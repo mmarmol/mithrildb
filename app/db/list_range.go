@@ -4,27 +4,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"mithrildb/model"
-
-	"github.com/linxGnu/grocksdb"
 )
 
-// ListRange devuelve una porción de la lista entre índices start y end (inclusive)
-func (db *DB) ListRange(cf string, key string, start, end int, opts *grocksdb.ReadOptions) ([]interface{}, error) {
-	handle, ok := db.Families[cf]
+// GetListRange returns a slice of a list document between the given start and end indices (inclusive).
+func (db *DB) GetListRange(opts ListRangeOptions) ([]interface{}, error) {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
 
-	err := model.ValidateDocumentKey(key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return nil, err
 	}
 
-	if opts == nil {
-		opts = db.DefaultReadOptions
+	if opts.ReadOptions == nil {
+		opts.ReadOptions = db.DefaultReadOptions
 	}
 
-	val, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
+	val, err := db.TransactionDB.GetCF(opts.ReadOptions, handle, []byte(opts.Key))
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +40,9 @@ func (db *DB) ListRange(cf string, key string, start, end int, opts *grocksdb.Re
 	if !ok {
 		return nil, ErrInvalidListType
 	}
+
+	start := opts.Start
+	end := opts.End
 
 	if start < 0 {
 		start = 0

@@ -17,7 +17,7 @@ func (db *DB) WriteTTLInTxn(txn *grocksdb.Transaction, cfName, key string, expir
 		return nil // no TTL to write
 	}
 
-	handle, err := db.GetOrCreateSystemIndex(CFSystemExpiration)
+	handle, err := db.EnsureSystemColumnFamily(CFSystemExpiration)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (db *DB) WriteTTLInTxn(txn *grocksdb.Transaction, cfName, key string, expir
 }
 
 func (db *DB) ClearAllTTLInTxn(txn *grocksdb.Transaction, cfName, key string) error {
-	handle, err := db.GetOrCreateSystemIndex(CFSystemExpiration)
+	handle, err := db.EnsureSystemColumnFamily(CFSystemExpiration)
 	if err != nil {
 		return err
 	}
@@ -96,10 +96,9 @@ func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
 		}
 
 		keySlice := iter.Key()
-		ttlKey := append([]byte{}, keySlice.Data()...) // copiar para evitar invalidación
-		keySlice.Free()                                // liberar slice de RocksDB
+		ttlKey := append([]byte{}, keySlice.Data()...)
+		keySlice.Free()
 
-		// Esperado: "timestamp:cf:key"
 		parts := bytes.SplitN(ttlKey, []byte(":"), 3)
 		if len(parts) < 3 {
 			continue
@@ -107,26 +106,33 @@ func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
 
 		ts, err := strconv.ParseInt(string(parts[0]), 10, 64)
 		if err != nil || ts > now {
-			break // ya no hay más expirados
+			break
 		}
 
 		cfName := string(parts[1])
 		docKey := string(parts[2])
 
-		doc, err := db.Get(cfName, docKey, readOpts)
+		doc, err := db.GetDocument(DocumentReadOptions{
+			ColumnFamily: cfName,
+			Key:          docKey,
+			ReadOptions:  readOpts,
+		})
 		if err != nil {
 			if !errors.Is(err, ErrKeyNotFound) {
 				log.Printf("[expiration] failed to read %s:%s: %v", cfName, docKey, err)
 				continue
 			}
-			// Documento ya fue borrado, seguimos con limpieza de TTL
 		} else {
 			if doc.Meta.Expiration != ts {
-				continue // documento fue tocado o actualizado
+				continue
 			}
 		}
 
-		if err := db.DeleteDirect(cfName, docKey, db.DefaultWriteOptions); err != nil {
+		if err := db.DeleteDocument(DocumentDeleteOptions{
+			ColumnFamily: cfName,
+			Key:          docKey,
+			WriteOptions: db.DefaultWriteOptions,
+		}); err != nil {
 			log.Printf("[expiration] failed to delete %s:%s: %v", cfName, docKey, err)
 			continue
 		}

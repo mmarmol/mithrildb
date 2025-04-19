@@ -27,7 +27,7 @@ func main() {
 	}
 
 	// Inicializa RocksDB con soporte para múltiples column families
-	rocksdb, families, err := db.NewRocksDBFromConfig(*cfg.RocksDB)
+	rocksdb, families, err := db.OpenRocksDBWithConfig(*cfg.RocksDB)
 	if err != nil {
 		log.Fatalf("Error initializing RocksDB: %v", err)
 	}

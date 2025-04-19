@@ -11,7 +11,7 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// DB representa una conexión a la base de datos RocksDB.
+// DB represents the main RocksDB interface with configured options and column families.
 type DB struct {
 	TransactionDB       *grocksdb.TransactionDB
 	DefaultReadOptions  *grocksdb.ReadOptions
@@ -20,11 +20,7 @@ type DB struct {
 	mu                  sync.Mutex
 }
 
-// RocksDBOptions contiene las opciones de configuración para RocksDB.
-type RocksDBOptions struct {
-	DBPath string
-}
-
+// NewDB creates a DB instance with default read and write options based on the application config.
 func NewDB(rocks *grocksdb.TransactionDB, families map[string]*grocksdb.ColumnFamilyHandle, cfg config.AppConfig) *DB {
 	readOpts := grocksdb.NewDefaultReadOptions()
 	readOpts.SetFillCache(cfg.ReadDefaults.FillCache)
@@ -47,49 +43,35 @@ func NewDB(rocks *grocksdb.TransactionDB, families map[string]*grocksdb.ColumnFa
 	}
 }
 
+// Close releases resources associated with the database.
 func (db *DB) Close() {
 	db.DefaultReadOptions.Destroy()
 	db.DefaultWriteOptions.Destroy()
 	db.TransactionDB.Close()
 }
 
-// NewRocksDBFromConfig abre o crea una instancia de RocksDB con soporte para múltiples column families.
-func NewRocksDBFromConfig(cfg config.RocksDBConfig) (*grocksdb.TransactionDB, map[string]*grocksdb.ColumnFamilyHandle, error) {
+// OpenRocksDBWithConfig opens or creates a RocksDB instance with support for multiple column families.
+func OpenRocksDBWithConfig(cfg config.RocksDBConfig) (*grocksdb.TransactionDB, map[string]*grocksdb.ColumnFamilyHandle, error) {
 	opts := grocksdb.NewDefaultOptions()
 	opts.SetCreateIfMissing(cfg.CreateIfMissing)
 	opts.SetWriteBufferSize(uint64(cfg.WriteBufferSize))
 	opts.SetMaxWriteBufferNumber(cfg.MaxWriteBufferNum)
 	opts.SetMaxOpenFiles(cfg.MaxOpenFiles)
+
 	dur, err := time.ParseDuration(cfg.StatsDumpPeriod)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid stats_dump_period: %w", err)
 	}
 	opts.SetStatsDumpPeriodSec(uint(dur.Seconds()))
 
-	// Configuración de tabla basada en bloques y cache
+	// Block-based table and cache
 	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
 	cache := grocksdb.NewLRUCache(uint64(cfg.BlockCacheSize))
 	bbto.SetBlockCache(cache)
 	opts.SetBlockBasedTableFactory(bbto)
 
-	// Compresión
-	if cfg.EnableCompression {
-		switch cfg.CompressionType {
-		case "snappy":
-			opts.SetCompression(grocksdb.SnappyCompression)
-		case "zstd":
-			opts.SetCompression(grocksdb.ZSTDCompression)
-		case "lz4":
-			opts.SetCompression(grocksdb.LZ4Compression)
-		case "none":
-			opts.SetCompression(grocksdb.NoCompression)
-		default:
-			fmt.Printf("⚠️  Tipo de compresión no reconocido: %s, usando snappy\n", cfg.CompressionType)
-			opts.SetCompression(grocksdb.SnappyCompression)
-		}
-	} else {
-		opts.SetCompression(grocksdb.NoCompression)
-	}
+	// Compression
+	opts.SetCompression(parseCompressionType(cfg.CompressionType, cfg.EnableCompression))
 
 	txnOpts := grocksdb.NewDefaultTransactionDBOptions()
 	dbPath := cfg.DBPath
@@ -97,27 +79,20 @@ func NewRocksDBFromConfig(cfg config.RocksDBConfig) (*grocksdb.TransactionDB, ma
 	var cfNames []string
 	if _, err := os.Stat(dbPath); err == nil {
 		cfNames, err = grocksdb.ListColumnFamilies(opts, dbPath)
-		if err != nil {
-			// Esto indica que el directorio existe, pero no hay base aún
-			fmt.Printf("⚠️  No se encontraron familias, inicializando con 'default'")
-			cfNames = []string{"default"}
-		} else if len(cfNames) == 0 {
+		if err != nil || len(cfNames) == 0 {
+			fmt.Println("⚠️  No column families found, initializing with 'default'")
 			cfNames = []string{"default"}
 		}
 	} else {
-		// Directorio no existe → crear base nueva
 		cfNames = []string{"default"}
 	}
 
 	cfOpts := make([]*grocksdb.Options, len(cfNames))
 	for i := range cfNames {
-		// Reutilizamos las mismas opciones para cada CF
 		cfOpts[i] = opts
 	}
 
-	db, cfHandles, err := grocksdb.OpenTransactionDbColumnFamilies(
-		opts, txnOpts, dbPath, cfNames, cfOpts,
-	)
+	db, cfHandles, err := grocksdb.OpenTransactionDbColumnFamilies(opts, txnOpts, dbPath, cfNames, cfOpts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open DB with column families: %w", err)
 	}
@@ -128,4 +103,24 @@ func NewRocksDBFromConfig(cfg config.RocksDBConfig) (*grocksdb.TransactionDB, ma
 	}
 
 	return db, handles, nil
+}
+
+// parseCompressionType converts a string compression type to the corresponding RocksDB constant.
+func parseCompressionType(name string, enabled bool) grocksdb.CompressionType {
+	if !enabled {
+		return grocksdb.NoCompression
+	}
+	switch strings.ToLower(name) {
+	case "snappy":
+		return grocksdb.SnappyCompression
+	case "zstd":
+		return grocksdb.ZSTDCompression
+	case "lz4":
+		return grocksdb.LZ4Compression
+	case "none":
+		return grocksdb.NoCompression
+	default:
+		fmt.Printf("⚠️  Unknown compression type: %s, defaulting to snappy\n", name)
+		return grocksdb.SnappyCompression
+	}
 }

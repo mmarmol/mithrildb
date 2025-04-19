@@ -5,21 +5,20 @@ import (
 	"fmt"
 
 	"mithrildb/model"
-
-	"github.com/linxGnu/grocksdb"
 )
 
-// Get retrieves a full Document by key from a specific column family.
-func (db *DB) Get(cf, key string, opts *grocksdb.ReadOptions) (*model.Document, error) {
-	handle, ok := db.Families[cf]
+// GetDocument retrieves a full document by key from a specific column family.
+func (db *DB) GetDocument(opts DocumentReadOptions) (*model.Document, error) {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return nil, ErrInvalidColumnFamily
 	}
-	if err := model.ValidateDocumentKey(key); err != nil {
+
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return nil, err
 	}
 
-	value, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
+	value, err := db.TransactionDB.GetCF(opts.ReadOptions, handle, []byte(opts.Key))
 	if err != nil {
 		return nil, err
 	}

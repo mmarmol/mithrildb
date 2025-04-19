@@ -11,13 +11,14 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-// IncrementCounter increments a counter document atomically and returns the old and new values.
-func (db *DB) DeltaCounter(cf, key string, delta int64, expiration *int64, opts *grocksdb.WriteOptions) (oldVal, newVal int64, err error) {
-	handle, ok := db.Families[cf]
+// IncrementCounter atomically increments a counter document and returns both the old and new values.
+func (db *DB) IncrementCounter(opts CounterIncrementOptions) (oldVal, newVal int64, err error) {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return 0, 0, ErrInvalidColumnFamily
 	}
-	if err := model.ValidateDocumentKey(key); err != nil {
+
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return 0, 0, err
 	}
 
@@ -25,7 +26,7 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, expiration *int64, opts 
 	txnOpts.SetSetSnapshot(true)
 	defer txnOpts.Destroy()
 
-	txn := db.TransactionDB.TransactionBegin(opts, txnOpts, nil)
+	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
 	readOpts := grocksdb.NewDefaultReadOptions()
@@ -33,7 +34,7 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, expiration *int64, opts 
 	readOpts.SetFillCache(false)
 	defer readOpts.Destroy()
 
-	val, err := txn.GetWithCF(readOpts, handle, []byte(key))
+	val, err := txn.GetWithCF(readOpts, handle, []byte(opts.Key))
 	if err != nil {
 		txn.Rollback()
 		return 0, 0, err
@@ -63,20 +64,17 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, expiration *int64, opts 
 		return 0, 0, ErrKeyNotFound
 	}
 
-	newVal = oldVal + delta
-	now := time.Now()
-
-	// Build updated document
+	newVal = oldVal + opts.Delta
 	doc.Value = newVal
 	doc.Meta.Rev = uuid.NewString()
-	doc.Meta.UpdatedAt = now
+	doc.Meta.UpdatedAt = time.Now()
 
-	if expiration != nil {
-		if err := model.ValidateExpiration(*expiration); err != nil {
+	if opts.Expiration != nil {
+		if err := model.ValidateExpiration(*opts.Expiration); err != nil {
 			txn.Rollback()
 			return 0, 0, err
 		}
-		doc.Meta.Expiration = *expiration
+		doc.Meta.Expiration = *opts.Expiration
 	}
 
 	data, err := json.Marshal(doc)
@@ -85,14 +83,13 @@ func (db *DB) DeltaCounter(cf, key string, delta int64, expiration *int64, opts 
 		return 0, 0, fmt.Errorf("failed to serialize new counter value: %w", err)
 	}
 
-	if err := txn.PutCF(handle, []byte(key), data); err != nil {
+	if err := txn.PutCF(handle, []byte(opts.Key), data); err != nil {
 		txn.Rollback()
 		return 0, 0, fmt.Errorf("failed to update counter: %w", err)
 	}
 
-	// Update TTL only if provided
-	if expiration != nil {
-		if err := db.ReplaceTTLInTxn(txn, cf, key, *expiration); err != nil {
+	if opts.Expiration != nil {
+		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
 			txn.Rollback()
 			return 0, 0, fmt.Errorf("failed to update TTL index: %w", err)
 		}

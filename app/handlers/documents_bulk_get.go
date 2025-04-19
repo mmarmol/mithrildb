@@ -55,8 +55,12 @@ func bulkGetHandler(database *db.DB, defaults config.ReadOptionsConfig) http.Han
 			defer opts.Destroy()
 		}
 
-		// Perform the multi-get operation and return document objects (not just values)
-		result, err := database.MultiGet(cf, req.Keys, opts)
+		// Perform the bulk-get operation and return document objects (not just values)
+		result, err := database.BulkGetDocuments(db.BulkReadOptions{
+			ColumnFamily: cf,
+			Keys:         req.Keys,
+			ReadOptions:  opts,
+		})
 		if err != nil {
 			mapAndRespondWithError(w, err)
 			return

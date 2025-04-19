@@ -5,26 +5,24 @@ import (
 	"fmt"
 	"mithrildb/model"
 	"reflect"
-
-	"github.com/linxGnu/grocksdb"
 )
 
-func (db *DB) SetContains(cf string, key string, element interface{}, opts *grocksdb.ReadOptions) (bool, error) {
-	handle, ok := db.Families[cf]
+// CheckSetContains returns true if the given element exists in the set document.
+func (db *DB) CheckSetContains(opts SetContainsOptions) (bool, error) {
+	handle, ok := db.Families[opts.ColumnFamily]
 	if !ok {
 		return false, ErrInvalidColumnFamily
 	}
 
-	if opts == nil {
-		opts = db.DefaultReadOptions
+	if opts.ReadOptions == nil {
+		opts.ReadOptions = db.DefaultReadOptions
 	}
 
-	err := model.ValidateDocumentKey(key)
-	if err != nil {
+	if err := model.ValidateDocumentKey(opts.Key); err != nil {
 		return false, err
 	}
 
-	val, err := db.TransactionDB.GetCF(opts, handle, []byte(key))
+	val, err := db.TransactionDB.GetCF(opts.ReadOptions, handle, []byte(opts.Key))
 	if err != nil {
 		return false, err
 	}
@@ -45,7 +43,7 @@ func (db *DB) SetContains(cf string, key string, element interface{}, opts *groc
 	}
 
 	for _, item := range set {
-		if reflect.DeepEqual(item, element) {
+		if reflect.DeepEqual(item, opts.Element) {
 			return true, nil
 		}
 	}
