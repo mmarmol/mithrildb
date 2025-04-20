@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"mithrildb/events"
 	"mithrildb/model"
 
 	"github.com/google/uuid"
@@ -42,6 +43,7 @@ func (db *DB) IncrementCounter(opts CounterIncrementOptions) (oldVal, newVal int
 	defer val.Free()
 
 	var doc model.Document
+	var prevMeta *model.Metadata
 	if val.Exists() {
 		if err := json.Unmarshal(val.Data(), &doc); err != nil {
 			txn.Rollback()
@@ -60,6 +62,8 @@ func (db *DB) IncrementCounter(opts CounterIncrementOptions) (oldVal, newVal int
 			txn.Rollback()
 			return 0, 0, err
 		}
+		metaCopy := doc.Meta
+		prevMeta = &metaCopy
 	} else {
 		return 0, 0, ErrKeyNotFound
 	}
@@ -88,11 +92,17 @@ func (db *DB) IncrementCounter(opts CounterIncrementOptions) (oldVal, newVal int
 		return 0, 0, fmt.Errorf("failed to update counter: %w", err)
 	}
 
-	if opts.Expiration != nil {
-		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
-			txn.Rollback()
-			return 0, 0, fmt.Errorf("failed to update TTL index: %w", err)
-		}
+	if err := events.PublishChangeEvent(events.ChangeEventOptions{
+		Txn:                txn,
+		CFName:             opts.ColumnFamily,
+		Key:                opts.Key,
+		Document:           &doc,
+		Operation:          events.OpMutate,
+		PreviousMeta:       prevMeta,
+		ExplicitExpiration: opts.Expiration,
+	}); err != nil {
+		txn.Rollback()
+		return 0, 0, fmt.Errorf("failed to enqueue change event: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"mithrildb/bootstrap"
 	"mithrildb/config"
-	"mithrildb/db"
-	"mithrildb/events"
-	"mithrildb/expiration"
 	"mithrildb/handlers"
 	"net/http"
 	"os"
@@ -19,35 +17,18 @@ import (
 var startTime = time.Now()
 
 func main() {
-	// Load config from resources/config.ini
+	// Load configuration
 	cfg := config.LoadConfig()
 
-	// Initialize RocksDB
-	if cfg.RocksDB == nil {
-		log.Fatal("❌ [Database.RocksDB] section is required in config.ini")
-	}
+	// Initialize database (RocksDB + CFs)
+	database := bootstrap.InitDatabase(&cfg)
+	defer database.Close()
 
-	// Inicializa RocksDB con soporte para múltiples column families
-	rocksdb, families, err := db.OpenRocksDBWithConfig(*cfg.RocksDB)
-	if err != nil {
-		log.Fatalf("Error initializing RocksDB: %v", err)
-	}
+	// Setup event system (queue, fanout, TTL listener)
+	bootstrap.InitEventSystem(database)
 
-	// Crea el wrapper DB (tu estructura personalizada)
-	database := db.NewDB(rocksdb, families, cfg)
-	defer database.Close() // Este cierre se encarga de cerrar tanto la base como los CFs
-
-	if err := events.InitEventQueue(database); err != nil {
-		log.Fatalf("cannot init event queue: %v", err)
-	}
-
-	expCfg, err := expiration.BuildFromAppConfig(cfg)
-	if err != nil {
-		log.Fatalf("invalid expiration config: %v", err)
-	}
-
-	expirer := expiration.NewService(database, expCfg)
-	expirer.Start()
+	// Setup expiration service (cron + stats)
+	expirer := bootstrap.InitExpirationService(database, cfg)
 
 	// Setup HTTP routes
 	handlers.SetupRoutes(database, expirer, &cfg, startTime)
@@ -55,7 +36,7 @@ func main() {
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	server := &http.Server{Addr: addr}
 
-	// Handle graceful shutdown
+	// Graceful shutdown handling
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 

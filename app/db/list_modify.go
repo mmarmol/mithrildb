@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"fmt"
+	"mithrildb/events"
 	"mithrildb/model"
 	"time"
 
@@ -94,6 +95,8 @@ func (db *DB) withListTransaction(
 		return nil, ErrKeyNotFound
 	}
 
+	metaCopy := doc.Meta
+
 	list, ok := doc.Value.([]interface{})
 	if !ok {
 		txn.Rollback()
@@ -129,11 +132,17 @@ func (db *DB) withListTransaction(
 		return nil, fmt.Errorf("failed to write document: %w", err)
 	}
 
-	if opts.Expiration != nil {
-		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
-			txn.Rollback()
-			return nil, fmt.Errorf("failed to update TTL index: %w", err)
-		}
+	if err := events.PublishChangeEvent(events.ChangeEventOptions{
+		Txn:                txn,
+		CFName:             opts.ColumnFamily,
+		Key:                opts.Key,
+		Document:           &doc,
+		Operation:          events.OpMutate,
+		PreviousMeta:       &metaCopy,
+		ExplicitExpiration: opts.Expiration,
+	}); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to enqueue change event: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

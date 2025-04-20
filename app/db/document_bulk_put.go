@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"mithrildb/events"
 	"mithrildb/model"
 
 	"github.com/google/uuid"
@@ -71,11 +72,18 @@ func (db *DB) BulkPutDocuments(opts BulkWriteOptions) error {
 			return fmt.Errorf("failed to write document for key '%s': %w", k, err)
 		}
 
-		if opts.Expiration != nil {
-			if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, k, *opts.Expiration); err != nil {
-				txn.Rollback()
-				return fmt.Errorf("failed to write TTL for key '%s': %w", k, err)
-			}
+		// Enqueue event for each document written
+		if err := events.PublishChangeEvent(events.ChangeEventOptions{
+			Txn:                txn,
+			CFName:             opts.ColumnFamily,
+			Key:                k,
+			Document:           &doc,
+			Operation:          events.OpPut,
+			PreviousMeta:       nil,
+			ExplicitExpiration: opts.Expiration,
+		}); err != nil {
+			txn.Rollback()
+			return fmt.Errorf("failed to enqueue change event for key '%s': %w", k, err)
 		}
 	}
 

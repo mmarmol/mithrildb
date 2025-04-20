@@ -7,44 +7,59 @@ import (
 
 	"mithrildb/model"
 
-	"github.com/google/uuid"
 	"github.com/linxGnu/grocksdb"
+)
+
+const (
+	OpPut     = "put"
+	OpDelete  = "delete"
+	OpMutate  = "mutate"
+	OpReplace = "replace"
+	OpInsert  = "insert"
+	OpTouch   = "touch"
 )
 
 const EventQueueCF = "system.eventqueue"
 
-// DocumentChangeEvent represents a change made to a document.
+var eventQueue *RocksQueue
+
+func InitEventQueue(q *RocksQueue) {
+	eventQueue = q
+}
+
 type DocumentChangeEvent struct {
-	Operation    string          `json:"operation"`
-	CF           string          `json:"cf"`
-	Key          string          `json:"key"`
-	Timestamp    int64           `json:"timestamp"`
-	Document     *model.Document `json:"document,omitempty"`
-	PreviousRev  *string         `json:"previous_rev,omitempty"`
-	PreviousMeta *model.Metadata `json:"previous_meta,omitempty"`
+	Operation          string          `json:"operation"`
+	CF                 string          `json:"cf"`
+	Key                string          `json:"key"`
+	Timestamp          int64           `json:"timestamp"`
+	Document           *model.Document `json:"document,omitempty"`
+	PreviousMeta       *model.Metadata `json:"previous_meta,omitempty"`
+	ExplicitExpiration *int64          `json:"explicit_expiration,omitempty"`
 }
 
-// ChangeEventOptions encapsulates the data required to enqueue a document change event.
 type ChangeEventOptions struct {
-	Txn          *grocksdb.Transaction
-	CFName       string
-	Key          string
-	Document     *model.Document
-	Operation    string
-	PreviousRev  *string
-	PreviousMeta *model.Metadata
+	Txn                *grocksdb.Transaction
+	CFName             string
+	Key                string
+	Document           *model.Document
+	Operation          string
+	PreviousMeta       *model.Metadata
+	ExplicitExpiration *int64
 }
 
-// PublishChangeEvent creates and writes a change event to the event queue CF within the provided transaction.
 func PublishChangeEvent(opts ChangeEventOptions) error {
+	if eventQueue == nil {
+		return fmt.Errorf("event queue is not initialized")
+	}
+
 	event := DocumentChangeEvent{
-		Operation:    opts.Operation,
-		CF:           opts.CFName,
-		Key:          opts.Key,
-		Timestamp:    time.Now().UnixMilli(),
-		Document:     opts.Document,
-		PreviousRev:  opts.PreviousRev,
-		PreviousMeta: opts.PreviousMeta,
+		Operation:          opts.Operation,
+		CF:                 opts.CFName,
+		Key:                opts.Key,
+		Timestamp:          time.Now().UnixMilli(),
+		Document:           opts.Document,
+		PreviousMeta:       opts.PreviousMeta,
+		ExplicitExpiration: opts.ExplicitExpiration,
 	}
 
 	data, err := json.Marshal(event)
@@ -52,16 +67,5 @@ func PublishChangeEvent(opts ChangeEventOptions) error {
 		return fmt.Errorf("failed to serialize DocumentChangeEvent: %w", err)
 	}
 
-	if eventCF == nil {
-		return fmt.Errorf("event queue column family not initialized")
-	}
-
-	keyBytes := generateEventKey()
-	return opts.Txn.PutCF(eventCF, keyBytes, data)
-}
-
-func generateEventKey() []byte {
-	ts := time.Now().UnixNano()
-	uid := uuid.New().String()
-	return []byte(fmt.Sprintf("%020d-%s", ts, uid))
+	return eventQueue.EnqueueWithTxn(opts.Txn, data)
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"mithrildb/events"
 	"mithrildb/model"
 
 	"github.com/linxGnu/grocksdb"
@@ -29,9 +30,16 @@ func (db *DB) DeleteDocument(opts DocumentDeleteOptions) error {
 		return fmt.Errorf("failed to delete document: %w", err)
 	}
 
-	if err := db.ClearAllTTLInTxn(txn, opts.ColumnFamily, opts.Key); err != nil {
+	// Publicar evento de eliminación sin documento ni expiración
+	if err := events.PublishChangeEvent(events.ChangeEventOptions{
+		Txn:       txn,
+		CFName:    opts.ColumnFamily,
+		Key:       opts.Key,
+		Operation: events.OpDelete,
+		Document:  nil,
+	}); err != nil {
 		txn.Rollback()
-		return fmt.Errorf("failed to remove TTL index: %w", err)
+		return fmt.Errorf("failed to enqueue delete event: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

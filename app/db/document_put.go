@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"mithrildb/events"
 	"mithrildb/model"
 
 	"github.com/google/uuid"
@@ -41,6 +42,7 @@ func (db *DB) PutDocument(opts DocumentWriteOptions) (*model.Document, error) {
 	txn := db.TransactionDB.TransactionBegin(opts.WriteOptions, txnOpts, nil)
 	defer txn.Destroy()
 
+	var prevMeta *model.Metadata
 	if opts.Cas != "" {
 		readOpts := grocksdb.NewDefaultReadOptions()
 		readOpts.SetFillCache(false)
@@ -63,6 +65,8 @@ func (db *DB) PutDocument(opts DocumentWriteOptions) (*model.Document, error) {
 				txn.Rollback()
 				return nil, ErrRevisionMismatch
 			}
+			metaCopy := existing.Meta
+			prevMeta = &metaCopy
 		}
 	}
 
@@ -94,11 +98,17 @@ func (db *DB) PutDocument(opts DocumentWriteOptions) (*model.Document, error) {
 		return nil, fmt.Errorf("failed to put document: %w", err)
 	}
 
-	if opts.Expiration != nil {
-		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
-			txn.Rollback()
-			return nil, fmt.Errorf("failed to update TTL index: %w", err)
-		}
+	if err := events.PublishChangeEvent(events.ChangeEventOptions{
+		Txn:                txn,
+		CFName:             opts.ColumnFamily,
+		Key:                opts.Key,
+		Document:           &doc,
+		Operation:          events.OpPut,
+		PreviousMeta:       prevMeta,
+		ExplicitExpiration: opts.Expiration,
+	}); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to enqueue change event: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

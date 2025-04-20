@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"mithrildb/events"
 	"mithrildb/model"
 
 	"github.com/google/uuid"
@@ -93,11 +94,17 @@ func (db *DB) InsertDocument(opts DocumentWriteOptions) (*model.Document, error)
 		return nil, fmt.Errorf("failed to insert document: %w", err)
 	}
 
-	if opts.Expiration != nil {
-		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
-			txn.Rollback()
-			return nil, fmt.Errorf("failed to update TTL index: %w", err)
-		}
+	if err := events.PublishChangeEvent(events.ChangeEventOptions{
+		Txn:                txn,
+		CFName:             opts.ColumnFamily,
+		Key:                opts.Key,
+		Document:           &doc,
+		Operation:          events.OpInsert,
+		PreviousMeta:       nil,
+		ExplicitExpiration: opts.Expiration,
+	}); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to enqueue insert event: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {

@@ -21,7 +21,7 @@ type DB struct {
 }
 
 // NewDB creates a DB instance with default read and write options based on the application config.
-func NewDB(rocks *grocksdb.TransactionDB, families map[string]*grocksdb.ColumnFamilyHandle, cfg config.AppConfig) *DB {
+func NewDB(rocks *grocksdb.TransactionDB, families map[string]*grocksdb.ColumnFamilyHandle, cfg *config.AppConfig) *DB {
 	readOpts := grocksdb.NewDefaultReadOptions()
 	readOpts.SetFillCache(cfg.ReadDefaults.FillCache)
 	if cfg.ReadDefaults.ReadTier == "cache-only" {

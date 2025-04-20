@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"mithrildb/events"
 	"mithrildb/model"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 // updateIfExists executes a transactional update on an existing document.
 func (db *DB) updateIfExists(
 	opts DocumentWriteOptions,
+	operation string,
 	modify func(doc *model.Document) error,
 ) (*model.Document, error) {
 	handle, ok := db.Families[opts.ColumnFamily]
@@ -60,6 +62,8 @@ func (db *DB) updateIfExists(
 		return nil, ErrKeyNotFound
 	}
 
+	metaCopy := existing.Meta
+
 	if err := modify(&existing); err != nil {
 		txn.Rollback()
 		return nil, err
@@ -76,11 +80,17 @@ func (db *DB) updateIfExists(
 		return nil, fmt.Errorf("failed to write document: %w", err)
 	}
 
-	if opts.Expiration != nil {
-		if err := db.ReplaceTTLInTxn(txn, opts.ColumnFamily, opts.Key, *opts.Expiration); err != nil {
-			txn.Rollback()
-			return nil, fmt.Errorf("failed to update TTL index: %w", err)
-		}
+	if err := events.PublishChangeEvent(events.ChangeEventOptions{
+		Txn:                txn,
+		CFName:             opts.ColumnFamily,
+		Key:                opts.Key,
+		Document:           &existing,
+		Operation:          operation,
+		PreviousMeta:       &metaCopy,
+		ExplicitExpiration: opts.Expiration,
+	}); err != nil {
+		txn.Rollback()
+		return nil, fmt.Errorf("failed to enqueue change event: %w", err)
 	}
 
 	if err := txn.Commit(); err != nil {
@@ -93,7 +103,7 @@ func (db *DB) updateIfExists(
 
 // ReplaceDocument overwrites a document only if the key already exists.
 func (db *DB) ReplaceDocument(opts DocumentWriteOptions) (*model.Document, error) {
-	return db.updateIfExists(opts, func(doc *model.Document) error {
+	return db.updateIfExists(opts, events.OpReplace, func(doc *model.Document) error {
 		if opts.Value == nil {
 			return ErrNilValue
 		}
@@ -116,7 +126,7 @@ func (db *DB) ReplaceDocument(opts DocumentWriteOptions) (*model.Document, error
 
 // TouchDocument updates only the expiration timestamp of an existing document.
 func (db *DB) TouchDocument(opts DocumentWriteOptions) (*model.Document, error) {
-	return db.updateIfExists(opts, func(doc *model.Document) error {
+	return db.updateIfExists(opts, events.OpTouch, func(doc *model.Document) error {
 		if opts.Expiration == nil {
 			return model.ErrInvalidExpiration
 		}

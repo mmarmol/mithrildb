@@ -12,7 +12,7 @@ import (
 
 const CFSystemExpiration = "system.expiration"
 
-func (db *DB) WriteTTLInTxn(txn *grocksdb.Transaction, cfName, key string, expiration int64) error {
+func (db *DB) WriteTTL(cfName, key string, expiration int64) error {
 	if expiration <= 0 {
 		return nil // no TTL to write
 	}
@@ -25,34 +25,32 @@ func (db *DB) WriteTTLInTxn(txn *grocksdb.Transaction, cfName, key string, expir
 	ttlKey := fmt.Sprintf("%d:%s:%s", expiration, cfName, key)
 	expStr := strconv.FormatInt(expiration, 10)
 
-	if err := txn.PutCF(handle, []byte(ttlKey), []byte(expStr)); err != nil {
-		return fmt.Errorf("failed to write TTL entry: %w", err)
-	}
-	return nil
+	return db.TransactionDB.PutCF(db.DefaultWriteOptions, handle, []byte(ttlKey), []byte(expStr))
 }
 
-func (db *DB) ClearAllTTLInTxn(txn *grocksdb.Transaction, cfName, key string) error {
+func (db *DB) ClearAllTTL(cfName, key string) error {
 	handle, err := db.EnsureSystemColumnFamily(CFSystemExpiration)
 	if err != nil {
 		return err
 	}
-
-	prefix := fmt.Sprintf("0:%s:%s", cfName, key)
 
 	readOpts := grocksdb.NewDefaultReadOptions()
 	defer readOpts.Destroy()
 	readOpts.SetPrefixSameAsStart(true)
 	readOpts.SetFillCache(false)
 
-	iter := txn.NewIteratorCF(readOpts, handle)
+	iter := db.TransactionDB.NewIteratorCF(readOpts, handle)
 	defer iter.Close()
+
+	prefix := fmt.Sprintf("0:%s:%s", cfName, key)
 
 	for iter.Seek([]byte(prefix)); iter.Valid(); iter.Next() {
 		k := iter.Key()
 		if !bytes.Contains(k.Data(), []byte(fmt.Sprintf(":%s:%s", cfName, key))) {
+			k.Free()
 			break
 		}
-		if err := txn.DeleteCF(handle, k.Data()); err != nil {
+		if err := db.TransactionDB.DeleteCF(db.DefaultWriteOptions, handle, k.Data()); err != nil {
 			k.Free()
 			return fmt.Errorf("failed to delete TTL entry for key=%q: %w", key, err)
 		}
@@ -61,14 +59,11 @@ func (db *DB) ClearAllTTLInTxn(txn *grocksdb.Transaction, cfName, key string) er
 	return nil
 }
 
-func (db *DB) ReplaceTTLInTxn(txn *grocksdb.Transaction, cfName, key string, expiration int64) error {
-	if err := db.ClearAllTTLInTxn(txn, cfName, key); err != nil {
+func (db *DB) ReplaceTTL(cfName, key string, expiration int64) error {
+	if err := db.ClearAllTTL(cfName, key); err != nil {
 		return err
 	}
-	if err := db.WriteTTLInTxn(txn, cfName, key, expiration); err != nil {
-		return err
-	}
-	return nil
+	return db.WriteTTL(cfName, key, expiration)
 }
 
 func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
@@ -84,9 +79,7 @@ func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
 	iter := db.TransactionDB.NewIteratorCF(readOpts, handle)
 	defer iter.Close()
 
-	// Empieza a leer desde la clave más baja posible (timestamp=0)
-	prefix := fmt.Sprintf("%010d:", 0)
-	iter.Seek([]byte(prefix))
+	iter.Seek([]byte(fmt.Sprintf("%010d:", 0)))
 
 	count := 0
 
@@ -95,12 +88,12 @@ func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
 			break
 		}
 
-		keySlice := iter.Key()
-		ttlKey := append([]byte{}, keySlice.Data()...)
-		keySlice.Free()
+		k := iter.Key()
+		ttlKey := append([]byte{}, k.Data()...)
+		k.Free()
 
 		parts := bytes.SplitN(ttlKey, []byte(":"), 3)
-		if len(parts) < 3 {
+		if len(parts) != 3 {
 			continue
 		}
 
@@ -120,20 +113,21 @@ func (db *DB) ProcessExpiredBatch(now int64, limit int) (int, error) {
 		if err != nil {
 			if !errors.Is(err, ErrKeyNotFound) {
 				log.Printf("[expiration] failed to read %s:%s: %v", cfName, docKey, err)
-				continue
 			}
-		} else {
-			if doc.Meta.Expiration != ts {
-				continue
-			}
+			continue
 		}
 
-		if err := db.DeleteDocument(DocumentDeleteOptions{
+		if doc.Meta.Expiration != ts {
+			continue
+		}
+
+		err = db.DeleteDocument(DocumentDeleteOptions{
 			ColumnFamily: cfName,
 			Key:          docKey,
 			WriteOptions: db.DefaultWriteOptions,
-		}); err != nil {
-			log.Printf("[expiration] failed to delete %s:%s: %v", cfName, docKey, err)
+		})
+		if err != nil {
+			log.Printf("[expiration] failed to delete expired %s:%s: %v", cfName, docKey, err)
 			continue
 		}
 
