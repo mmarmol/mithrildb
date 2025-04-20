@@ -27,6 +27,10 @@ func InitEventQueue(q *RocksQueue) {
 	eventQueue = q
 }
 
+func GetEventQueue() *RocksQueue {
+	return eventQueue
+}
+
 type DocumentChangeEvent struct {
 	Operation          string          `json:"operation"`
 	CF                 string          `json:"cf"`

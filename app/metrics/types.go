@@ -20,9 +20,10 @@ type ServerMetrics struct {
 }
 
 type FullMetrics struct {
-	Server     ServerMetrics      `json:"server"`
-	RocksDB    map[string]any     `json:"rocksdb"`
-	Expiration *ExpirationMetrics `json:"expiration,omitempty"`
+	Server     ServerMetrics       `json:"server"`
+	RocksDB    map[string]any      `json:"rocksdb"`
+	Expiration *ExpirationMetrics  `json:"expiration,omitempty"`
+	Events     *EventSystemMetrics `json:"events,omitempty"`
 }
 
 type ExpirationMetrics struct {
@@ -32,4 +33,15 @@ type ExpirationMetrics struct {
 	TotalDeleted     int    `json:"total_deleted"`
 	TotalRuns        int    `json:"total_runs"`
 	LastErrorMessage string `json:"last_error,omitempty"`
+}
+
+type QueueMetrics struct {
+	Name  string `json:"name"`
+	Head  uint64 `json:"head"`
+	Tail  uint64 `json:"tail"`
+	Depth uint64 `json:"depth"`
+}
+
+type EventSystemMetrics struct {
+	Queues []QueueMetrics `json:"queues"`
 }

@@ -27,12 +27,11 @@ func metricsHandler(database *db.DB, expirer *expiration.Service, cfg *config.Ap
 			return
 		}
 
-		rocks := metrics.GetRocksDBMetrics(database.TransactionDB)
-
 		result := metrics.FullMetrics{
 			Server:     server,
-			RocksDB:    rocks,
+			RocksDB:    metrics.GetRocksDBMetrics(database.TransactionDB),
 			Expiration: metrics.GetExpirationMetrics(expirer),
+			Events:     metrics.GetEventSystemMetrics(),
 		}
 
 		w.Header().Set("Content-Type", "application/json")

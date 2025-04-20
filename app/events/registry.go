@@ -7,6 +7,9 @@ import (
 // Queue defines an interface for enqueuing event messages.
 type Queue interface {
 	Enqueue(value []byte) error
+	Dequeue() ([]byte, error)
+	Ack(key []byte) error
+	Metrics() (head, tail, depth uint64) // ✅ Añadir esta línea
 }
 
 type Listener struct {

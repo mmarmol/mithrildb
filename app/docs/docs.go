@@ -1876,6 +1876,17 @@ const docTemplate = `{
                 }
             }
         },
+        "metrics.EventSystemMetrics": {
+            "type": "object",
+            "properties": {
+                "queues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/metrics.QueueMetrics"
+                    }
+                }
+            }
+        },
         "metrics.ExpirationMetrics": {
             "type": "object",
             "properties": {
@@ -1902,6 +1913,9 @@ const docTemplate = `{
         "metrics.FullMetrics": {
             "type": "object",
             "properties": {
+                "events": {
+                    "$ref": "#/definitions/metrics.EventSystemMetrics"
+                },
                 "expiration": {
                     "$ref": "#/definitions/metrics.ExpirationMetrics"
                 },
@@ -1911,6 +1925,23 @@ const docTemplate = `{
                 },
                 "server": {
                     "$ref": "#/definitions/metrics.ServerMetrics"
+                }
+            }
+        },
+        "metrics.QueueMetrics": {
+            "type": "object",
+            "properties": {
+                "depth": {
+                    "type": "integer"
+                },
+                "head": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tail": {
+                    "type": "integer"
                 }
             }
         },

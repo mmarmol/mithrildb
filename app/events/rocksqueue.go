@@ -74,6 +74,12 @@ func (q *RocksQueue) savePointer(key string, value uint64) error {
 	return q.DB.PutCF(q.WriteOpts, q.CF, []byte(key), buf)
 }
 
+func (q *RocksQueue) savePointerWithTxn(txn *grocksdb.Transaction, key string, value uint64) error {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, value)
+	return txn.PutCF(q.CF, []byte(key), buf)
+}
+
 func (q *RocksQueue) Enqueue(data []byte) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -85,6 +91,19 @@ func (q *RocksQueue) Enqueue(data []byte) error {
 
 	q.tail++
 	return q.savePointer(metaTailKey, q.tail)
+}
+
+func (q *RocksQueue) EnqueueWithTxn(txn *grocksdb.Transaction, data []byte) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	key := encodeSeq(q.tail)
+	if err := txn.PutCF(q.CF, key, data); err != nil {
+		return err
+	}
+
+	q.tail++
+	return q.savePointerWithTxn(txn, metaTailKey, q.tail)
 }
 
 func (q *RocksQueue) Next() ([]byte, []byte, error) {
@@ -114,19 +133,28 @@ func (q *RocksQueue) Ack(key []byte) error {
 	if err := q.DB.DeleteCF(q.WriteOpts, q.CF, key); err != nil {
 		return err
 	}
+
+	// Nota: esto puede causar que el head se mueva más allá si el procesamiento es asíncrono,
+	// pero es aceptable si usamos orden estricto en Next.
 	q.head++
 	return q.savePointer(metaHeadKey, q.head)
 }
 
-func (q *RocksQueue) EnqueueWithTxn(txn *grocksdb.Transaction, value []byte) error {
+func (q *RocksQueue) Dequeue() ([]byte, error) {
+	_, val, err := q.Next()
+	return val, err
+}
+
+func (q *RocksQueue) Metrics() (head, tail, depth uint64) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	key := encodeSeq(q.tail)
-	if err := txn.PutCF(q.CF, key, value); err != nil {
-		return err
+	head = q.head
+	tail = q.tail
+	if tail >= head {
+		depth = tail - head
+	} else {
+		depth = 0
 	}
-
-	q.tail++
-	return q.savePointer(metaTailKey, q.tail)
+	return
 }
