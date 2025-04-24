@@ -139,3 +139,9 @@ func mapAndRespondWithError(w http.ResponseWriter, err error) {
 	status, msg := mapErrorToResponse(err)
 	respondWithError(w, status, msg)
 }
+
+func respondWithJSON(w http.ResponseWriter, status int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}

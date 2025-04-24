@@ -271,6 +271,29 @@ definitions:
       value:
         description: 'Content: string, int, []string, map[string]any, etc.'
     type: object
+  model.IndexDefinition:
+    properties:
+      condition:
+        description: Serialized expression (e.g., CEL, expr)
+        type: string
+      created_at:
+        description: Creation timestamp
+        type: integer
+      last_updated_at:
+        description: Last update applied
+        type: integer
+      name:
+        description: Must be CF-compatible
+        type: string
+      projection:
+        description: Fields used to build index key
+        items:
+          type: string
+        type: array
+      total_indexed:
+        description: Total keys indexed
+        type: integer
+    type: object
   model.Metadata:
     properties:
       expiration:
@@ -1351,6 +1374,116 @@ paths:
       summary: Create column family
       tags:
       - families
+  /indexes:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all existing secondary index definitions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of index definitions
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List indexes
+      tags:
+      - indexes
+    post:
+      consumes:
+      - application/json
+      description: Defines a new secondary index with projection and condition.
+      parameters:
+      - description: Index definition
+        in: body
+        name: index
+        required: true
+        schema:
+          $ref: '#/definitions/model.IndexDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Index created successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid index definition
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create index
+      tags:
+      - indexes
+  /indexes/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a secondary index and its definition from the system.
+      parameters:
+      - description: Index name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Index deleted successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid index name
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete index
+      tags:
+      - indexes
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the definition of a specific secondary index.
+      parameters:
+      - description: Index name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Index definition
+          schema:
+            $ref: '#/definitions/model.IndexDefinition'
+        "400":
+          description: Invalid index name
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Index not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get index
+      tags:
+      - indexes
   /metrics:
     get:
       description: Returns server-level, RocksDB and expiration system metrics including

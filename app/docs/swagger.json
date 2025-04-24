@@ -1566,6 +1566,172 @@
                 }
             }
         },
+        "/indexes": {
+            "get": {
+                "description": "Retrieves all existing secondary index definitions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "indexes"
+                ],
+                "summary": "List indexes",
+                "responses": {
+                    "200": {
+                        "description": "List of index definitions",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Defines a new secondary index with projection and condition.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "indexes"
+                ],
+                "summary": "Create index",
+                "parameters": [
+                    {
+                        "description": "Index definition",
+                        "name": "index",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.IndexDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Index created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid index definition",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/indexes/{name}": {
+            "get": {
+                "description": "Retrieves the definition of a specific secondary index.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "indexes"
+                ],
+                "summary": "Get index",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Index name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Index definition",
+                        "schema": {
+                            "$ref": "#/definitions/model.IndexDefinition"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid index name",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Index not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a secondary index and its definition from the system.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "indexes"
+                ],
+                "summary": "Delete index",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Index name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Index deleted successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid index name",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/metrics": {
             "get": {
                 "description": "Returns server-level, RocksDB and expiration system metrics including memory usage, uptime, compaction stats, and TTL cleanup activity.",
@@ -1983,6 +2149,38 @@
                 },
                 "value": {
                     "description": "Content: string, int, []string, map[string]any, etc."
+                }
+            }
+        },
+        "model.IndexDefinition": {
+            "type": "object",
+            "properties": {
+                "condition": {
+                    "description": "Serialized expression (e.g., CEL, expr)",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "Creation timestamp",
+                    "type": "integer"
+                },
+                "last_updated_at": {
+                    "description": "Last update applied",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Must be CF-compatible",
+                    "type": "string"
+                },
+                "projection": {
+                    "description": "Fields used to build index key",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "total_indexed": {
+                    "description": "Total keys indexed",
+                    "type": "integer"
                 }
             }
         },

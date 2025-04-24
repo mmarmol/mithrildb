@@ -222,4 +222,27 @@ func SetupRoutes(database *db.DB, expirer *expiration.Service, cfg *config.AppCo
 			respondWithNotAllowed(w)
 		}
 	})
+
+	http.HandleFunc("/indexes", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleListIndexes(database)(w, r)
+		case http.MethodPost:
+			handleCreateIndex(database)(w, r)
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
+
+	http.HandleFunc("/indexes/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetIndex(database)(w, r)
+		case http.MethodDelete:
+			handleDeleteIndex(database)(w, r)
+		default:
+			respondWithNotAllowed(w)
+		}
+	})
+
 }

@@ -22,6 +22,7 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
 	github.com/linxGnu/grocksdb v1.9.9 // indirect
 	github.com/swaggo/http-swagger v1.3.4
 )
